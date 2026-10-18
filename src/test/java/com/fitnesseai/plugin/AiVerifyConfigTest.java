@@ -1,11 +1,16 @@
 package com.fitnesseai.plugin;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AiVerifyConfigTest {
@@ -37,6 +42,40 @@ class AiVerifyConfigTest {
   void inlinePromptOverridesDefault() {
     Properties props = props("llm.prompt", "custom prompt");
     assertEquals("custom prompt", new AiVerifyConfig(props).systemPrompt());
+  }
+
+  @Test
+  void promptFileOverridesInlineAndDefault(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("ai-verify-prompt.md");
+    Files.writeString(file, "# My prompt\nsecond line", StandardCharsets.UTF_8);
+    Properties props = props("llm.prompt", "inline prompt", "llm.prompt.file", file.toString());
+    assertEquals("# My prompt\nsecond line", new AiVerifyConfig(props).systemPrompt());
+  }
+
+  @Test
+  void promptFileIsRereadOnEachCall(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("ai-verify-prompt.md");
+    Files.writeString(file, "first version", StandardCharsets.UTF_8);
+    AiVerifyConfig config = new AiVerifyConfig(props("llm.prompt.file", file.toString()));
+    assertEquals("first version", config.systemPrompt());
+    Files.writeString(file, "second version", StandardCharsets.UTF_8);
+    assertEquals("second version", config.systemPrompt());
+  }
+
+  @Test
+  void missingPromptFileThrowsListingPropertyAndPath(@TempDir Path dir) {
+    String path = dir.resolve("does-not-exist.md").toString();
+    Properties props = props("llm.prompt.file", path);
+    IllegalStateException e = assertThrows(IllegalStateException.class,
+      () -> new AiVerifyConfig(props).systemPrompt());
+    assertTrue(e.getMessage().contains("llm.prompt.file"));
+    assertTrue(e.getMessage().contains(path));
+  }
+
+  @Test
+  void blankPromptFileFallsBackToDefault() {
+    Properties props = props("llm.prompt.file", "   ");
+    assertTrue(new AiVerifyConfig(props).systemPrompt().contains("JSON object"));
   }
 
   @Test

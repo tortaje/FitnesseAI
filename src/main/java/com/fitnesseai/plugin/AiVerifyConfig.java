@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -15,6 +18,7 @@ public final class AiVerifyConfig {
   public static final String MAX_TOKENS = "llm.max.tokens";
   public static final String TIMEOUT_SECONDS = "llm.timeout.seconds";
   public static final String PROMPT = "llm.prompt";
+  public static final String PROMPT_FILE = "llm.prompt.file";
 
   public static final int DEFAULT_MAX_TOKENS = 4096;
   public static final int DEFAULT_TIMEOUT_SECONDS = 120;
@@ -64,6 +68,10 @@ public final class AiVerifyConfig {
   }
 
   public String systemPrompt() {
+    String path = raw(PROMPT_FILE);
+    if (!isBlank(path)) {
+      return promptFromFile(path);
+    }
     String inline = raw(PROMPT);
     if (!isBlank(inline)) {
       return inline;
@@ -79,6 +87,16 @@ public final class AiVerifyConfig {
       return new String(in.readAllBytes(), StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
+    }
+  }
+
+  private static String promptFromFile(String path) {
+    try {
+      return Files.readString(Path.of(path), StandardCharsets.UTF_8);
+    } catch (NoSuchFileException e) {
+      throw new IllegalStateException(PROMPT_FILE + " points to a missing file: " + path);
+    } catch (IOException e) {
+      throw new IllegalStateException(PROMPT_FILE + " could not read file " + path + ": " + e.getMessage());
     }
   }
 
