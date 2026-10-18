@@ -22,7 +22,7 @@ JAR Maven unique dans `plugins/`. Aucune modification du core FitNesse.
 
 ### Composants Java
 
-- **`AiVerifyPluginFactory`** — implémente `PluginFeatureFactory`, enregistré via `PluginFeatureFactory.Impl` dans `plugins.properties`. Injecte le JS/CSS via les *component factories* FitNesse (pages d'édition uniquement) et enregistre le responder.
+- **`AiVerifyPluginFactory`** — implémente `PluginFeatureFactory` (hérite de `PluginFeatureFactoryBase`), découvert automatiquement via ServiceLoader (`META-INF/services/fitnesse.plugins.PluginFeatureFactory` dans le JAR, aucune propriété requise). Enregistre le responder `ai-verify` et **remplace** le responder `edit` par `AiVerifyEditResponder` (sous-classe qui injecte le JS/CSS dans le HTML de la page d'édition — FitNesse n'expose plus de hook `makeBrowsers()`).
 - **`AiVerifyResponder`** — `POST /responder/ai-verify`. Lit la config, appelle le LLM, calcule le diff, renvoie du JSON.
 - **`LlmClient`** — client HTTP basé sur `java.net.http.HttpClient` (JDK 11+) vers `POST {base.url}/chat/completions`.
 - **`DiffService`** — découpage original/corrigé en hunks ; attache les commentaires LLM par ligne.
@@ -30,7 +30,7 @@ JAR Maven unique dans `plugins/`. Aucune modification du core FitNesse.
 
 ### Composants client (ressources embarquées dans le JAR)
 
-- **`ai-verify.js`** — détection de la page d'édition, injection du bouton, appel du responder, rendu du modal, sélection des hunk, fusion dans le textarea. Inclut une copie minimale de jsdiff.
+- **`ai-verify.js`** — détection de la page d'édition, injection du bouton, appel du responder, rendu du modal, sélection des hunk, fusion dans le textarea. Aucune dépendance JS : le diff est calculé côté serveur, le JS fusionne les hunk sélectionnés.
 - **`ai-verify.css`** — styles modal/diff.
 - **`ai-verify-prompt.txt`** — prompt système par défaut (syntaxe FitNesse/wikitext), surchargeable.
 
@@ -45,9 +45,14 @@ JAR Maven unique dans `plugins/`. Aucune modification du core FitNesse.
 3. `DiffService` calcule les hunks entre `content` et `corrected`, attache les commentaires dont la ligne tombe dans le hunk.
 4. Réponse du responder :
    ```json
-   { "hunks": [ { "id": 0, "type": "modified", "lines": [...], "comment": "..." } ],
+   { "hunks": [ { "id": 0, "type": "modified", "startLine": 5,
+                  "originalLines": ["..."], "correctedLines": ["..."], "comment": "..." } ],
      "stats": { "added": 3, "removed": 2 } }
    ```
+   `startLine` est le numéro de ligne (1-based) de la zone dans le contenu *original* ; `originalLines`/`correctedLines` portent le contenu des deux côtés du hunk (vide pour un ajout pur / une suppression pure). Le JS reconstruit le document fusionné à partir du contenu envoyé + `startLine`/`originalLines`/`correctedLines` des hunk cochés.
+
+   Requête : le JS POSTe `responder=ai-verify&payload=<urlencoded JSON {pageName, content}>` (form-encoded) sur l'URL de la page — le parseur de body de FitNesse traite tout body non-multipart comme `key=value&`, un body JSON brut corromprait la résolution du `responder`.
+
    Types de hunk : `added`, `removed`, `modified`.
 5. JS : modal deux colonnes (original à gauche, corrigé à droite), checkbox par hunk (cochées par défaut), commentaires LLM sous le hunk concerné.
 6. « Apply » : reconstruction du contenu n'incluant que les hunk cochés → écriture dans le textarea → fermeture du modal.
@@ -67,7 +72,6 @@ JAR Maven unique dans `plugins/`. Aucune modification du core FitNesse.
 ## Configuration (`plugins/plugins.properties`)
 
 ```properties
-PluginFeatureFactory.Impl=com.fitnesseai.plugin.AiVerifyPluginFactory
 llm.base.url=http://localhost:11434/v1
 llm.api.key=sk-...          # vide accepté pour endpoints locaux
 llm.model=llama3.1
@@ -76,7 +80,9 @@ llm.timeout.seconds=120
 llm.prompt=<texte inline>   # optionnel : remplace le prompt système par défaut (texte inline, pas de fichier)
 ```
 
-Relecture de la config à chaque requête (pas de cache) → changements sans redémarrage.
+Le plugin se découvre via ServiceLoader : aucune propriété de registration n'est nécessaire. `llm.base.url` et `llm.model` sont obligatoires ; les autres ont des valeurs par défaut.
+
+Le plugin ne cache pas la config : elle est relue dans `context.getProperties()` à chaque requête. Attention : FitNesse charge `plugins.properties` au démarrage — modifier le fichier nécessite donc un redémarrage de FitNesse.
 
 ## Sécurité
 
@@ -100,5 +106,5 @@ Relecture de la config à chaque requête (pas de cache) → changements sans re
 ## Packaging & installation
 
 - **Java 21** (LTS ; officiellement supporté et testé par FitNesse 20241023+ ; compatible 21 et aussi 25/26) ; `mvn package` → `fitnesse-ai-verify-<version>-jar-with-dependencies.jar` (JS/CSS/prompt empaquetés dans le JAR).
-- Dépendances externes minimales (java-diff-utils ou diff maison).
+- Dépendances externes minimales : `org.json` et `com.googlecode.java-diff-utils:diffutils` en scope `provided` (déjà présents dans le JAR standalone FitNesse, donc non empaquetés). Dépendance de compilation : `org.fitnesse:fitnesse:20250223` (provided ; dernière version Maven Central ; dernière release GitHub : 20251025 pour le smoke test manuel).
 - Installation : copier le JAR dans `plugins/`, configurer les propriétés `llm.*` dans `plugins/plugins.properties`, redémarrer FitNesse standalone.
