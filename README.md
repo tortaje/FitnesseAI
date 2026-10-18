@@ -32,6 +32,8 @@ le textarea (sauvegarde manuelle habituelle ensuite).
    llm.base.url=http://localhost:11434/v1
    llm.api.key=
    llm.model=llama3.1
+   # Prompt système en markdown relu à chaque clic Verify (pas de redémarrage)
+   llm.prompt.file=/chemin/vers/ai-verify-prompt.md
    ```
 
    Propriétés :
@@ -44,8 +46,17 @@ le textarea (sauvegarde manuelle habituelle ensuite).
    | `llm.max.tokens`     | non         | 4096   | `max_tokens` de la requête                                |
    | `llm.timeout.seconds`| non         | 120    | Timeout HTTP                                             |
    | `llm.prompt`         | non         | embarqué | Texte inline remplaçant le prompt système par défaut   |
+   | `llm.prompt.file`    | non         | —      | Chemin d'un fichier UTF-8 (`.md` recommandé) contenant le prompt système ; relu à chaque vérification, priorité sur `llm.prompt` |
 
-4. Redémarrer FitNesse.
+4. Redémarrer FitNesse (une seule fois : les propriétés `llm.*` sont lues au
+   démarrage). Ensuite, modifier le fichier `llm.prompt.file` prend effet au
+   prochain clic sur **Verify with AI** — sans redémarrage ni recompil.
+
+   Pour partir du prompt embarqué :
+
+   ```bash
+   unzip -p plugins/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar ai-verify-prompt.txt > ai-verify-prompt.md
+   ```
 
 Aucune propriété de registration n'est nécessaire : le plugin se découvre via
 ServiceLoader (META-INF/services dans le JAR).
@@ -79,11 +90,11 @@ Pas de test automatisé JS dans ce projet. Après `mvn package` + installation :
 - [ ] Sur une page non existante ou `?new` : pas de bouton.
 - [ ] Sans config LLM (`llm.*` absentes) : clic → message listant `llm.base.url`,
       `llm.model`.
-- [ ] Avec un endpoint LLM valide : clic → « Vérification… » puis modal avec hunks ;
+- [ ] Avec un endpoint LLM valide : clic → « Verifying… » puis modal avec hunks ;
       décocher un hunk met Apply à jour le compteur ; Apply met à jour le textarea
       (et l'éditeur WYSIWYG si actif) sans sauvegarder.
-- [ ] Aucune différence → « Aucune correction proposée. »
-- [ ] LLM en erreur (mauvaise URL) → bandeau d'erreur + bouton Réessayer.
+- [ ] Aucune différence → « No corrections proposed. »
+- [ ] LLM en erreur (mauvaise URL) → bandeau d'erreur + bouton Retry.
 - [ ] Modifier le textarea pendant que le modal est ouvert, puis Apply → refus
       avec message explicite.
 - [ ] Échap / clic hors modal / ✕ ferment le modal ; le focus revient au bouton.
