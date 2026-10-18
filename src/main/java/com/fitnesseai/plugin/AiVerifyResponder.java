@@ -48,6 +48,8 @@ public class AiVerifyResponder implements SecureResponder {
         error.put("details", e.rawBody());
       }
       return jsonResponse(502, error);
+    } catch (RuntimeException e) {
+      return jsonResponse(502, new JSONObject().put("error", e.getMessage()));
     }
 
     DiffService.Result diff = new DiffService().compute(content, llmResult.corrected(), llmResult.comments());

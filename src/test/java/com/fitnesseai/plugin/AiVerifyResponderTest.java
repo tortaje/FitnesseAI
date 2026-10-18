@@ -17,6 +17,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -172,5 +173,22 @@ class AiVerifyResponderTest {
 
     assertEquals(200, lastStatus);
     assertEquals(0, body.getJSONArray("hunks").length());
+  }
+
+  @Test
+  void unreadablePromptFileReturns502WithPropertyAndPath() throws Exception {
+    Properties props = new Properties();
+    props.setProperty("llm.base.url", "http://127.0.0.1:1/v1");
+    props.setProperty("llm.model", "test-model");
+    String missing = Path.of(System.getProperty("java.io.tmpdir"),
+      "ai-verify-missing-" + System.nanoTime() + ".md").toString();
+    props.setProperty("llm.prompt.file", missing);
+    context = FitNesseUtil.makeTestContext(props);
+
+    JSONObject body = dispatch(verifyRequest("content"));
+
+    assertEquals(502, lastStatus);
+    assertTrue(body.getString("error").contains("llm.prompt.file"));
+    assertTrue(body.getString("error").contains(missing));
   }
 }
