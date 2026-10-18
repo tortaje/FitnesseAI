@@ -59,6 +59,7 @@
   cursor: pointer;
   line-height: 1;
   padding: 0.2em 0.4em;
+  color: #444;
 }
 
 .ai-verify-diff {
@@ -195,21 +196,39 @@
 .ai-verify-footer button {
   padding: 0.4em 1em;
   cursor: pointer;
-  border: 1px solid #bbb;
+  border: 1px solid #777;
   border-radius: 4px;
-  background: #f5f5f5;
+  background: #e2e2e2;
+  color: #1a1a1a;
+  font-size: 13px;
+}
+
+.ai-verify-footer button:hover {
+  background: #cfcfcf;
+}
+
+.ai-verify-footer button:disabled {
+  border-color: #bbb;
+  background: #efefef;
+  color: #888;
+  cursor: default;
 }
 
 .ai-verify-apply {
   background: #2f6f2f !important;
   border-color: #2f6f2f !important;
-  color: #fff;
+  color: #fff !important;
   font-weight: bold;
+}
+
+.ai-verify-apply:hover {
+  background: #255a25 !important;
 }
 
 .ai-verify-apply:disabled {
   background: #999 !important;
   border-color: #999 !important;
+  color: #eee !important;
   cursor: default;
 }
 

@@ -130,17 +130,17 @@
       return;
     }
     state.button.disabled = busy;
-    state.button.textContent = busy ? 'Vérification…' : 'Verify with AI';
+    state.button.textContent = busy ? 'Verifying…' : 'Verify with AI';
   }
 
   function typeLabel(type) {
     if (type === 'added') {
-      return 'ajouté';
+      return 'added';
     }
     if (type === 'removed') {
-      return 'supprimé';
+      return 'removed';
     }
-    return 'modifié';
+    return 'modified';
   }
 
   function ensureModal() {
@@ -154,17 +154,17 @@
       '  <div class="ai-verify-header">',
       '    <h2 id="ai-verify-title"></h2>',
       '    <span class="ai-verify-stats"></span>',
-      '    <button type="button" class="ai-verify-close" aria-label="Fermer">&#10005;</button>',
+      '    <button type="button" class="ai-verify-close" aria-label="Close">&#10005;</button>',
       '  </div>',
       '  <div class="ai-verify-diff"></div>',
       '  <div class="ai-verify-message" hidden></div>',
       '  <div class="ai-verify-error" hidden><pre class="ai-verify-error-text"></pre></div>',
       '  <div class="ai-verify-footer">',
       '    <button type="button" class="ai-verify-apply">Apply (0)</button>',
-      '    <button type="button" class="ai-verify-select-all">Tout sélectionner</button>',
-      '    <button type="button" class="ai-verify-select-none">Tout désélectionner</button>',
-      '    <button type="button" class="ai-verify-retry" hidden>Réessayer</button>',
-      '    <button type="button" class="ai-verify-cancel">Annuler</button>',
+      '    <button type="button" class="ai-verify-select-all">Select all</button>',
+      '    <button type="button" class="ai-verify-select-none">Select none</button>',
+      '    <button type="button" class="ai-verify-retry" hidden>Retry</button>',
+      '    <button type="button" class="ai-verify-cancel">Cancel</button>',
       '  </div>',
       '</div>'
     ].join('');
@@ -307,7 +307,7 @@
 
   function cellLines(lines, side, type) {
     if (lines.length === 0) {
-      return '<div class="ai-verify-line ai-verify-line-empty">(aucune ligne)</div>';
+      return '<div class="ai-verify-line ai-verify-line-empty">(no lines)</div>';
     }
     var html = '';
     for (var i = 0; i < lines.length; i++) {
@@ -342,7 +342,7 @@
       var gap = start - cursor;
       var ctxCount = Math.min(CONTEXT_LINES, Math.max(0, gap));
       if (gap - ctxCount > 0) {
-        html.push('<div class="ai-verify-skipped">… ' + (gap - ctxCount) + ' ligne(s) inchangée(s) masquée(s) …</div>');
+        html.push('<div class="ai-verify-skipped">… ' + (gap - ctxCount) + ' unchanged line(s) hidden …</div>');
       }
       if (ctxCount > 0) {
         var before = lines.slice(start - ctxCount, start);
@@ -373,7 +373,7 @@
     var trailingCount = Math.min(CONTEXT_LINES, lines.length - cursor);
     var trailingHidden = (lines.length - cursor) - trailingCount;
     if (trailingHidden > 0) {
-      html.push('<div class="ai-verify-skipped">… ' + trailingHidden + ' ligne(s) inchangée(s) masquée(s) …</div>');
+      html.push('<div class="ai-verify-skipped">… ' + trailingHidden + ' unchanged line(s) hidden …</div>');
     }
     if (trailingCount > 0) {
       var trailing = lines.slice(cursor, cursor + trailingCount);
@@ -443,8 +443,8 @@
 
   function applySelections() {
     if (hashContent(getPageContent()) !== state.sentHash) {
-      showErrorModal('Le contenu de la page a changé depuis la vérification. ' +
-        'Fermez ce modal et relancez « Verify with AI ».', null);
+      showErrorModal('The page content changed since the verification. ' +
+        'Close this dialog and run "Verify with AI" again.', null);
       return;
     }
     var merged = mergeContent(state.sentContent, state.hunks, selectedIds());
@@ -478,23 +478,23 @@
           data = JSON.parse(text);
         } catch (e) { /* not JSON */ }
         if (!resp.ok) {
-          showErrorModal(data && data.error ? data.error : ('Erreur HTTP ' + resp.status),
+          showErrorModal(data && data.error ? data.error : ('HTTP error ' + resp.status),
             data && data.details ? data.details : null);
           return;
         }
         if (!data || !Array.isArray(data.hunks)) {
-          showErrorModal('Réponse inattendue du serveur.', text.substring(0, 500));
+          showErrorModal('Unexpected response from the server.', text.substring(0, 500));
           return;
         }
         if (data.hunks.length === 0) {
-          showMessageModal('Aucune correction proposée.');
+          showMessageModal('No corrections proposed.');
           return;
         }
         openModal(pageName, data);
       });
     }).catch(function (err) {
       setBusy(false);
-      showErrorModal('Impossible de contacter le serveur FitNesse : ' + err.message, null);
+      showErrorModal('Could not reach the FitNesse server: ' + err.message, null);
     });
   }
 
