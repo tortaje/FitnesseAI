@@ -99,6 +99,6 @@ Relecture de la config à chaque requête (pas de cache) → changements sans re
 
 ## Packaging & installation
 
-- **Java 11** (minimum requis par FitNesse 20241023+ ; compatible 11/17/21, testé aussi sur 25/26) ; `mvn package` → `fitnesse-ai-verify-<version>-jar-with-dependencies.jar` (JS/CSS/prompt empaquetés dans le JAR).
+- **Java 21** (LTS ; officiellement supporté et testé par FitNesse 20241023+ ; compatible 21 et aussi 25/26) ; `mvn package` → `fitnesse-ai-verify-<version>-jar-with-dependencies.jar` (JS/CSS/prompt empaquetés dans le JAR).
 - Dépendances externes minimales (java-diff-utils ou diff maison).
 - Installation : copier le JAR dans `plugins/`, configurer les propriétés `llm.*` dans `plugins/plugins.properties`, redémarrer FitNesse standalone.
