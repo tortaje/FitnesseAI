@@ -24,7 +24,7 @@ JAR Maven unique dans `plugins/`. Aucune modification du core FitNesse.
 
 - **`AiVerifyPluginFactory`** — implémente `PluginFeatureFactory`, enregistré via `PluginFeatureFactory.Impl` dans `plugins.properties`. Injecte le JS/CSS via les *component factories* FitNesse (pages d'édition uniquement) et enregistre le responder.
 - **`AiVerifyResponder`** — `POST /responder/ai-verify`. Lit la config, appelle le LLM, calcule le diff, renvoie du JSON.
-- **`LlmClient`** — client HTTP Java 8 compatible (`HttpURLConnection`) vers `POST {base.url}/chat/completions`.
+- **`LlmClient`** — client HTTP basé sur `java.net.http.HttpClient` (JDK 11+) vers `POST {base.url}/chat/completions`.
 - **`DiffService`** — découpage original/corrigé en hunks ; attache les commentaires LLM par ligne.
 - **`AiVerifyConfig`** — lecture/validation des propriétés `llm.*`.
 
@@ -99,6 +99,6 @@ Relecture de la config à chaque requête (pas de cache) → changements sans re
 
 ## Packaging & installation
 
-- Java 8 compatible ; `mvn package` → `fitnesse-ai-verify-<version>-jar-with-dependencies.jar` (JS/CSS/prompt empaquetés dans le JAR).
+- **Java 11** (minimum requis par FitNesse 20241023+ ; compatible 11/17/21, testé aussi sur 25/26) ; `mvn package` → `fitnesse-ai-verify-<version>-jar-with-dependencies.jar` (JS/CSS/prompt empaquetés dans le JAR).
 - Dépendances externes minimales (java-diff-utils ou diff maison).
 - Installation : copier le JAR dans `plugins/`, configurer les propriétés `llm.*` dans `plugins/plugins.properties`, redémarrer FitNesse standalone.
