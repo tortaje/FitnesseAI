@@ -1,0 +1,162 @@
+package io.github.tortaje;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public final class AiVerifyConfig {
+  private static final Logger LOG = Logger.getLogger(AiVerifyConfig.class.getName());
+
+  public static final String BASE_URL = "llm.base.url";
+  public static final String API_KEY = "llm.api.key";
+  public static final String MODEL = "llm.model";
+  public static final String MAX_TOKENS = "llm.max.tokens";
+  public static final String TIMEOUT_SECONDS = "llm.timeout.seconds";
+  public static final String DEBUG = "llm.debug";
+
+  // Verify (proofreading) prompts
+  public static final String VERIFY_PROMPT = "llm.verify.prompt";
+  public static final String VERIFY_PROMPT_FILE = "llm.verify.prompt.file";
+
+  // Generate (Ai Prompt) prompts
+  public static final String GENERATE_PROMPT = "llm.generate.prompt";
+  public static final String GENERATE_PROMPT_FILE = "llm.generate.prompt.file";
+
+
+  public static final int DEFAULT_MAX_TOKENS = 4096;
+  public static final int DEFAULT_TIMEOUT_SECONDS = 120;
+
+  private static final String DEFAULT_PROMPT_RESOURCE = "/ai-verify-prompt.txt";
+  private static final String DEFAULT_GENERATE_PROMPT_RESOURCE = "/ai-generate-prompt.txt";
+
+  private final Properties properties;
+
+  public AiVerifyConfig(Properties properties) {
+    this.properties = properties;
+  }
+
+  public List<String> missingRequired() {
+    List<String> missing = new ArrayList<>();
+    if (isBlank(raw(BASE_URL))) {
+      missing.add(BASE_URL);
+    }
+    if (isBlank(raw(MODEL))) {
+      missing.add(MODEL);
+    }
+    return missing;
+  }
+
+  public String baseUrl() {
+    String url = raw(BASE_URL);
+    if (url == null) {
+      return null;
+    }
+    return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+  }
+
+  public String apiKey() {
+    String key = raw(API_KEY);
+    return key == null ? "" : key;
+  }
+
+  public String model() {
+    return raw(MODEL);
+  }
+
+  public int maxTokens() {
+    return intOr(MAX_TOKENS, DEFAULT_MAX_TOKENS);
+  }
+
+  public int timeoutSeconds() {
+    return intOr(TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS);
+  }
+
+  public boolean debug() {
+    return Boolean.parseBoolean(raw(DEBUG));
+  }
+
+  public String systemPrompt() {
+    return resolvePrompt("[ai-verify]", VERIFY_PROMPT_FILE, VERIFY_PROMPT, DEFAULT_PROMPT_RESOURCE);
+  }
+
+  public String generateSystemPrompt() {
+    return resolvePrompt("[ai-prompt]", GENERATE_PROMPT_FILE, GENERATE_PROMPT, DEFAULT_GENERATE_PROMPT_RESOURCE);
+  }
+
+  /** INFO when {@code llm.debug} is on, FINE (hidden by default) otherwise. */
+  public Level logLevel() {
+    return debug() ? Level.INFO : Level.FINE;
+  }
+
+  private String resolvePrompt(String tag, String fileKey, String inlineKey, String resource) {
+    String path = raw(fileKey);
+    if (!isBlank(path)) {
+      String prompt = promptFromFile(path, fileKey);
+      logPromptSource(tag, "file(" + path + ")", prompt);
+      return prompt;
+    }
+    String inline = raw(inlineKey);
+    if (!isBlank(inline)) {
+      logPromptSource(tag, "inline", inline);
+      return inline;
+    }
+    String prompt = defaultPrompt(resource);
+    logPromptSource(tag, "bundled default", prompt);
+    return prompt;
+  }
+
+  private void logPromptSource(String tag, String source, String prompt) {
+    LOG.log(logLevel(), () -> tag + " prompt source=" + source + " (" + prompt.length() + " chars)");
+  }
+
+  static String defaultPrompt(String resource) {
+    try (InputStream in = AiVerifyConfig.class.getResourceAsStream(resource)) {
+      if (in == null) {
+        throw new IllegalStateException("Default prompt resource missing: " + resource);
+      }
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private static String promptFromFile(String path, String fileKey) {
+    try {
+      return Files.readString(Path.of(path), StandardCharsets.UTF_8);
+    } catch (NoSuchFileException e) {
+      throw new IllegalStateException(fileKey + " points to a missing file: " + path);
+    } catch (IOException e) {
+      throw new IllegalStateException(fileKey + " could not read file " + path + ": " + e.getMessage());
+    }
+  }
+
+  private String raw(String key) {
+    String value = properties.getProperty(key);
+    return value == null ? null : value.trim();
+  }
+
+  private int intOr(String key, int defaultValue) {
+    String value = raw(key);
+    if (value == null) {
+      return defaultValue;
+    }
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+      return defaultValue;
+    }
+  }
+
+  private static boolean isBlank(String s) {
+    return s == null || s.isBlank();
+  }
+}
