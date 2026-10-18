@@ -12,8 +12,11 @@ import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class LlmClient {
+  private static final Logger LOG = Logger.getLogger(LlmClient.class.getName());
+
   public record Comment(int line, String explanation) {}
   public record Result(String corrected, List<Comment> comments, String rawContent) {}
 
@@ -36,11 +39,16 @@ public class LlmClient {
         .put(new JSONObject().put("role", "system").put("content", config.systemPrompt()))
         .put(new JSONObject().put("role", "user").put("content", pageContent)));
 
+    String requestBody = body.toString();
+    String url = config.baseUrl() + "/chat/completions";
+    LOG.info(() -> "[ai-verify] POST " + url + " model=" + config.model()
+      + " request=" + truncate(requestBody));
+
     HttpRequest.Builder builder = HttpRequest.newBuilder()
-      .uri(URI.create(config.baseUrl() + "/chat/completions"))
+      .uri(URI.create(url))
       .timeout(Duration.ofSeconds(config.timeoutSeconds()))
       .header("Content-Type", "application/json")
-      .POST(HttpRequest.BodyPublishers.ofString(body.toString()));
+      .POST(HttpRequest.BodyPublishers.ofString(requestBody));
     if (!config.apiKey().isBlank()) {
       builder.header("Authorization", "Bearer " + config.apiKey());
     }
@@ -57,11 +65,15 @@ public class LlmClient {
       throw new LlmException("Could not reach LLM at " + config.baseUrl() + ": " + e.getMessage());
     }
 
+    LOG.info(() -> "[ai-verify] LLM response HTTP " + response.statusCode()
+      + " body=" + truncate(response.body()));
+
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
       throw new LlmException("LLM returned HTTP " + response.statusCode(), truncate(response.body()));
     }
 
     String content = extractContent(response.body());
+    LOG.info(() -> "[ai-verify] LLM content=" + truncate(content));
     return parseResult(stripMarkdownFences(content));
   }
 
@@ -98,6 +110,7 @@ public class LlmClient {
     JSONObject obj = tryParse(json);
     if (obj == null) {
       // Small local models often double-escape quotes (\\" instead of \").
+      LOG.info("[ai-verify] Strict JSON parse failed, retrying with double-escaped quotes repaired");
       obj = tryParse(json.replace("\\\\\"", "\\\""));
     }
     if (obj == null) {
@@ -121,6 +134,7 @@ public class LlmClient {
     try {
       return new JSONObject(json);
     } catch (RuntimeException e) {
+      LOG.info(() -> "[ai-verify] JSON parse failed: " + e.getMessage());
       return null;
     }
   }
