@@ -2,6 +2,26 @@
 
 .ai-verify-button {
   margin-left: 0.5em;
+  background: #2b6cb0;
+  border: 1px solid #2b6cb0;
+  color: #fff;
+}
+
+.ai-verify-button:hover {
+  background: #235a97;
+  border-color: #235a97;
+  color: #fff;
+}
+
+.ai-verify-button:disabled {
+  background: #7a9cc6;
+  border-color: #7a9cc6;
+  cursor: default;
+}
+
+.ai-verify-icon {
+  vertical-align: -2px;
+  margin-right: 0.4em;
 }
 
 .ai-verify-overlay {

@@ -130,7 +130,10 @@
       return;
     }
     state.button.disabled = busy;
-    state.button.textContent = busy ? 'Verifying…' : 'Verify with AI';
+    var label = state.button.querySelector('.ai-verify-label');
+    if (label) {
+      label.textContent = busy ? 'Verifying…' : 'Verify with AI';
+    }
   }
 
   function typeLabel(type) {
@@ -516,7 +519,9 @@
     button.type = 'button';
     button.id = 'ai-verify-button';
     button.className = 'button ai-verify-button';
-    button.textContent = 'Verify with AI';
+    button.innerHTML = '<svg class="ai-verify-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">'
+      + '<path fill="currentColor" d="M8 0l1.8 5.2L15 7l-5.2 1.8L8 14l-1.8-5.2L1 7l5.2-1.8z"/></svg>'
+      + '<span class="ai-verify-label">Verify with AI</span>';
     saveButtons.appendChild(button);
     state.button = button;
     button.addEventListener('click', verifyNow);
