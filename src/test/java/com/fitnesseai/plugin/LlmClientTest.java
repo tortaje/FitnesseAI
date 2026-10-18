@@ -131,6 +131,16 @@ class LlmClientTest {
   }
 
   @Test
+  void repairsAsymmetricQuoteEscapesFromSmallModels() throws Exception {
+    // Real llama3.2:3b output: opening quote with \\ (invalid), closing with \\\
+    // (valid JSON but decodes to a spurious backslash before the quote).
+    String broken = "{\"corrected\": \"say \\\\\"hi\\\\\\\" now\", \"comments\": []}";
+    respondWithBody = llmReply(broken);
+
+    assertEquals("say \"hi\" now", new LlmClient().chat(config(), "page").corrected());
+  }
+
+  @Test
   void httpErrorRaisesLlmExceptionWithRawBody() {
     respondWithStatus = 500;
     respondWithBody = "internal boom";

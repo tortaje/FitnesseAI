@@ -109,9 +109,9 @@ public class LlmClient {
   static Result parseResult(String json) throws LlmException {
     JSONObject obj = tryParse(json);
     if (obj == null) {
-      // Small local models often double-escape quotes (\\" instead of \").
-      LOG.info("[ai-verify] Strict JSON parse failed, retrying with double-escaped quotes repaired");
-      obj = tryParse(json.replace("\\\\\"", "\\\""));
+      // Small local models over-escape quotes with 2+ backslashes (\\" and \\\").
+      LOG.info("[ai-verify] Strict JSON parse failed, retrying with over-escaped quotes repaired");
+      obj = tryParse(json.replaceAll("\\\\{2,}\"", "\\\\\\\""));
     }
     if (obj == null) {
       throw new LlmException("LLM did not return valid JSON", truncate(json));
