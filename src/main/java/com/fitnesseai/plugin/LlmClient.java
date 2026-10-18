@@ -95,10 +95,12 @@ public class LlmClient {
   }
 
   static Result parseResult(String json) throws LlmException {
-    JSONObject obj;
-    try {
-      obj = new JSONObject(json);
-    } catch (RuntimeException e) {
+    JSONObject obj = tryParse(json);
+    if (obj == null) {
+      // Small local models often double-escape quotes (\\" instead of \").
+      obj = tryParse(json.replace("\\\\\"", "\\\""));
+    }
+    if (obj == null) {
       throw new LlmException("LLM did not return valid JSON", truncate(json));
     }
     if (!obj.has("corrected") || !(obj.get("corrected") instanceof String)) {
@@ -113,6 +115,14 @@ public class LlmClient {
       }
     }
     return new Result(obj.getString("corrected"), comments, json);
+  }
+
+  private static JSONObject tryParse(String json) {
+    try {
+      return new JSONObject(json);
+    } catch (RuntimeException e) {
+      return null;
+    }
   }
 
   private static String truncate(String s) {

@@ -118,6 +118,19 @@ class LlmClientTest {
   }
 
   @Test
+  void repairsDoubleEscapedQuotesFromSmallModels() throws Exception {
+    // llama3.2:3b emits \\" where JSON requires \" inside string values.
+    String corrected = "To add your first \"page\", click the Edit button.";
+    String wellFormed = new JSONObject()
+      .put("corrected", corrected)
+      .put("comments", new JSONArray())
+      .toString();
+    respondWithBody = llmReply(wellFormed.replace("\\\"", "\\\\\""));
+
+    assertEquals(corrected, new LlmClient().chat(config(), "page").corrected());
+  }
+
+  @Test
   void httpErrorRaisesLlmExceptionWithRawBody() {
     respondWithStatus = 500;
     respondWithBody = "internal boom";
