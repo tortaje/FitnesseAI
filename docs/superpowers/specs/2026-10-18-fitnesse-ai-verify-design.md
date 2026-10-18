@@ -10,7 +10,7 @@ Ajouter à FitNesse un plugin, installable dans le répertoire `plugins/` de la 
 ## Contraintes & décisions validées
 
 - Fournisseur LLM : **API compatible OpenAI** (URL de base configurable → OpenAI cloud, Ollama, LM Studio, vLLM, OpenRouter…).
-- Configuration LLM dans **`plugins/plugins.properties`** (standard FitNesse, pas d'UI de config).
+- Configuration LLM dans **`plugins.properties`** à la racine FitNesse (standard FitNesse, pas d'UI de config).
 - Le bouton analyse le **contenu actuel du textarea** (modifications non sauvegardées comprises).
 - Sélection des corrections **par hunk de diff**.
 - « Apply » met à jour le **textarea** ; l'utilisateur sauvegarde lui-même (pas de sauvegarde automatique).
@@ -69,7 +69,7 @@ JAR Maven unique dans `plugins/`. Aucune modification du core FitNesse.
 - **Bouton** : dans la barre d'outils d'édition (à côté de Save/Preview/Cancel), visible uniquement sur `?edit`. Pendant l'appel : « Vérification… », désactivé. Config absente → alerte expliquant les propriétés requises.
 - **Modal** : overlay plein écran, panneau centré (~90%), fermable par ✕/Échap. En-tête : titre « Verify with AI — <page> » + stats. Deux colonnes côte à côte avec scroll horizontal synchronisé, contexte gris autour des hunks. Pied : « Apply (n) », « Tout sélectionner / Tout désélectionner », « Annuler ». Responsive (colonnes empilées sur écran étroit). Focus piège + navigation clavier.
 
-## Configuration (`plugins/plugins.properties`)
+## Configuration (`plugins.properties` à la racine FitNesse)
 
 ```properties
 llm.base.url=http://localhost:11434/v1
@@ -107,4 +107,4 @@ Le plugin ne cache pas la config : elle est relue dans `context.getProperties()`
 
 - **Java 21** (LTS ; officiellement supporté et testé par FitNesse 20241023+ ; compatible 21 et aussi 25/26) ; `mvn package` → `fitnesse-ai-verify-<version>-jar-with-dependencies.jar` (JS/CSS/prompt empaquetés dans le JAR).
 - Dépendances externes minimales : `org.json` et `com.googlecode.java-diff-utils:diffutils` en scope `provided` (déjà présents dans le JAR standalone FitNesse, donc non empaquetés). Dépendance de compilation : `org.fitnesse:fitnesse:20250223` (provided ; dernière version Maven Central ; dernière release GitHub : 20251025 pour le smoke test manuel).
-- Installation : copier le JAR dans `plugins/`, configurer les propriétés `llm.*` dans `plugins/plugins.properties`, redémarrer FitNesse standalone.
+- Installation : copier le JAR dans `plugins/`, configurer les propriétés `llm.*` dans `plugins.properties` à la racine FitNesse, redémarrer FitNesse standalone.

@@ -34,7 +34,7 @@ public class AiVerifyResponder implements SecureResponder {
     AiVerifyConfig config = new AiVerifyConfig(context.getProperties());
     if (!config.missingRequired().isEmpty()) {
       return jsonResponse(400, new JSONObject()
-        .put("error", "AI verify is not configured. Add these properties to plugins/plugins.properties: "
+        .put("error", "AI verify is not configured. Add these properties to plugins.properties at the FitNesse root: "
           + String.join(", ", config.missingRequired()))
         .put("missing", new JSONArray(config.missingRequired())));
     }
