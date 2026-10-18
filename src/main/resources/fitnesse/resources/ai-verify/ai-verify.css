@@ -232,6 +232,16 @@
   cursor: default;
 }
 
+.ai-verify-cancel {
+  background: #b03030 !important;
+  border-color: #b03030 !important;
+  color: #fff !important;
+}
+
+.ai-verify-cancel:hover {
+  background: #962828 !important;
+}
+
 @media (max-width: 800px) {
   .ai-verify-colhead,
   .ai-verify-hunk-row,
