@@ -615,6 +615,7 @@
     overlay.querySelector('.ai-verify-retry').hidden = true;
     overlay.querySelector('#ai-prompt-title').textContent =
       'Ai Prompt to FitNesse — ' + currentPageName();
+    overlay.querySelector('.ai-prompt-send').textContent = 'Send';
     updatePromptSendButton();
     updatePromptSaveButton();
     state.promptPreviouslyFocused = document.activeElement;
