@@ -26,9 +26,13 @@ public final class AiVerifyConfig {
   public static final String GENERATE_PROMPT = "llm.generate.prompt";
   public static final String GENERATE_PROMPT_FILE = "llm.generate.prompt.file";
   public static final String DEBUG = "llm.debug";
+  public static final String HTTP_MAX_CONNECTIONS = "llm.http.max.connections";
+  public static final String HTTP_CONNECTION_TTL_SECONDS = "llm.http.connection.ttl.seconds";
 
   public static final int DEFAULT_MAX_TOKENS = 4096;
   public static final int DEFAULT_TIMEOUT_SECONDS = 120;
+  public static final int DEFAULT_HTTP_MAX_CONNECTIONS = 20;
+  public static final int DEFAULT_HTTP_CONNECTION_TTL_SECONDS = 300;
 
   private static final String DEFAULT_PROMPT_RESOURCE = "/ai-verify-prompt.txt";
   private static final String DEFAULT_GENERATE_PROMPT_RESOURCE = "/ai-generate-prompt.txt";
@@ -73,6 +77,14 @@ public final class AiVerifyConfig {
 
   public int timeoutSeconds() {
     return intOr(TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS);
+  }
+
+  public int httpMaxConnections() {
+    return intOr(HTTP_MAX_CONNECTIONS, DEFAULT_HTTP_MAX_CONNECTIONS);
+  }
+
+  public int httpConnectionTtlSeconds() {
+    return intOr(HTTP_CONNECTION_TTL_SECONDS, DEFAULT_HTTP_CONNECTION_TTL_SECONDS);
   }
 
   public boolean debug() {
