@@ -649,6 +649,102 @@
     log.scrollTop = log.scrollHeight;
   }
 
+  function currentFormPageType() {
+    var checked = document.querySelector('form input[name="pageType"]:checked');
+    if (checked) {
+      return checked.value;
+    }
+    var hidden = document.querySelector('form input[name="pageType"]');
+    if (hidden && hidden.value) {
+      return hidden.value;
+    }
+    var template = document.querySelector('form input[name="pageTemplate"]');
+    if (template && template.value) {
+      var segment = template.value.substring(template.value.lastIndexOf('.') + 1);
+      if (segment.indexOf('Suite') !== -1) {
+        return 'Suite';
+      }
+      if (segment.indexOf('Test') !== -1) {
+        return 'Test';
+      }
+      if (segment.indexOf('Static') !== -1) {
+        return 'Static';
+      }
+    }
+    return '';
+  }
+
+  function sendPrompt() {
+    var overlay = ensurePromptModal();
+    var input = overlay.querySelector('.ai-prompt-input');
+    var text = input.value.trim();
+    if (text === '' || state.prompt.busy) {
+      return;
+    }
+    state.prompt.messages.push({ role: 'user', content: text });
+    appendPromptBubble('user', text);
+    input.value = '';
+    updatePromptSendButton();
+    sendPromptRequest();
+  }
+
+  function sendPromptRequest() {
+    var overlay = ensurePromptModal();
+    if (state.prompt.busy) {
+      return;
+    }
+    setPromptBusy(true);
+    overlay.querySelector('.ai-verify-error').hidden = true;
+    overlay.querySelector('.ai-verify-retry').hidden = true;
+
+    var payload = JSON.stringify({
+      pageName: currentPageName(),
+      pageType: currentFormPageType(),
+      pageContent: overlay.querySelector('.ai-prompt-content').value,
+      messages: state.prompt.messages
+    });
+    var form = 'responder=ai-prompt&payload=' + encodeURIComponent(payload);
+
+    fetch(window.location.pathname, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form
+    }).then(function (resp) {
+      return resp.text().then(function (raw) {
+        setPromptBusy(false);
+        var data = null;
+        try {
+          data = JSON.parse(raw);
+        } catch (e) { /* not JSON */ }
+        if (!resp.ok) {
+          showPromptError(data && data.error ? data.error : ('HTTP error ' + resp.status),
+            data && data.details ? data.details : null);
+          return;
+        }
+        if (!data || typeof data.content !== 'string') {
+          showPromptError('Unexpected response from the server.', raw.substring(0, 500));
+          return;
+        }
+        state.prompt.messages.push({ role: 'assistant', content: data.content });
+        appendPromptBubble('assistant', data.content);
+        overlay.querySelector('.ai-prompt-content').value = data.content;
+        updatePromptSaveButton();
+      });
+    }).catch(function (err) {
+      setPromptBusy(false);
+      showPromptError('Could not reach the FitNesse server: ' + err.message, null);
+    });
+  }
+
+  function showPromptError(message, details) {
+    var overlay = ensurePromptModal();
+    var error = overlay.querySelector('.ai-verify-error');
+    var text = overlay.querySelector('.ai-verify-error-text');
+    text.textContent = details ? message + '\n\n' + details : message;
+    error.hidden = false;
+    overlay.querySelector('.ai-verify-retry').hidden = false;
+  }
+
   onReady(function () {
     if (!document.getElementById('pageContent')) {
       return;
