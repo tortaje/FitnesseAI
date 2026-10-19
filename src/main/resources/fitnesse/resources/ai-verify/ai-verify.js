@@ -15,6 +15,8 @@
     promptModal: null,
     prompt: { messages: [], busy: false },
     promptButton: null,
+    promptGeneration: 0,
+    promptPreviouslyFocused: null,
     previouslyFocused: null
   };
 
@@ -244,7 +246,6 @@
     renderDiff(state.sentContent, data.hunks);
     updateApplyButton();
 
-    state.previouslyFocused = document.activeElement;
     overlay.style.display = 'flex';
     overlay.querySelector('.ai-verify-close').focus();
   }
@@ -264,7 +265,6 @@
     overlay.querySelector('.ai-verify-apply').hidden = true;
     overlay.querySelector('.ai-verify-select-all').hidden = true;
     overlay.querySelector('.ai-verify-select-none').hidden = true;
-    state.previouslyFocused = document.activeElement;
     overlay.style.display = 'flex';
     overlay.querySelector('.ai-verify-close').focus();
   }
@@ -288,7 +288,6 @@
     overlay.querySelector('.ai-verify-select-all').hidden = true;
     overlay.querySelector('.ai-verify-select-none').hidden = true;
     if (!overlay.style.display || overlay.style.display === 'none') {
-      state.previouslyFocused = document.activeElement;
       overlay.style.display = 'flex';
       overlay.querySelector('.ai-verify-close').focus();
     }
@@ -477,6 +476,7 @@
     state.sentContent = content;
     state.sentHash = hashContent(content);
     state.pageName = pageName;
+    state.previouslyFocused = document.activeElement;
     setBusy(true);
 
     var form = 'responder=ai-verify&payload=' +
@@ -583,7 +583,11 @@
   }
 
   function openPromptModal() {
+    if (state.modal && state.modal.style.display && state.modal.style.display !== 'none') {
+      return;
+    }
     var overlay = ensurePromptModal();
+    state.promptGeneration++;
     state.prompt = { messages: [], busy: false };
     overlay.querySelector('.ai-prompt-log').innerHTML = '';
     overlay.querySelector('.ai-prompt-input').value = '';
@@ -594,7 +598,7 @@
       'Ai Prompt to FitNesse — ' + currentPageName();
     updatePromptSendButton();
     updatePromptSaveButton();
-    state.previouslyFocused = document.activeElement;
+    state.promptPreviouslyFocused = document.activeElement;
     overlay.style.display = 'flex';
     overlay.querySelector('.ai-prompt-input').focus();
   }
@@ -603,9 +607,10 @@
     if (!state.promptModal) {
       return;
     }
+    state.promptGeneration++;
     state.promptModal.style.display = 'none';
-    if (state.previouslyFocused && state.previouslyFocused.focus) {
-      state.previouslyFocused.focus();
+    if (state.promptPreviouslyFocused && state.promptPreviouslyFocused.focus) {
+      state.promptPreviouslyFocused.focus();
     }
   }
 
@@ -693,6 +698,7 @@
     if (state.prompt.busy) {
       return;
     }
+    var generation = state.promptGeneration;
     setPromptBusy(true);
     overlay.querySelector('.ai-verify-error').hidden = true;
     overlay.querySelector('.ai-verify-retry').hidden = true;
@@ -711,6 +717,9 @@
       body: form
     }).then(function (resp) {
       return resp.text().then(function (raw) {
+        if (generation !== state.promptGeneration) {
+          return;
+        }
         setPromptBusy(false);
         var data = null;
         try {
@@ -731,6 +740,9 @@
         updatePromptSaveButton();
       });
     }).catch(function (err) {
+      if (generation !== state.promptGeneration) {
+        return;
+      }
       setPromptBusy(false);
       showPromptError('Could not reach the FitNesse server: ' + err.message, null);
     });
