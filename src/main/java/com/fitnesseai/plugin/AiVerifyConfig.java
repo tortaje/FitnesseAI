@@ -23,12 +23,15 @@ public final class AiVerifyConfig {
   public static final String TIMEOUT_SECONDS = "llm.timeout.seconds";
   public static final String PROMPT = "llm.prompt";
   public static final String PROMPT_FILE = "llm.prompt.file";
+  public static final String GENERATE_PROMPT = "llm.generate.prompt";
+  public static final String GENERATE_PROMPT_FILE = "llm.generate.prompt.file";
   public static final String DEBUG = "llm.debug";
 
   public static final int DEFAULT_MAX_TOKENS = 4096;
   public static final int DEFAULT_TIMEOUT_SECONDS = 120;
 
   private static final String DEFAULT_PROMPT_RESOURCE = "/ai-verify-prompt.txt";
+  private static final String DEFAULT_GENERATE_PROMPT_RESOURCE = "/ai-generate-prompt.txt";
 
   private final Properties properties;
 
@@ -77,31 +80,40 @@ public final class AiVerifyConfig {
   }
 
   public String systemPrompt() {
-    String path = raw(PROMPT_FILE);
+    return resolvePrompt("[ai-verify]", PROMPT_FILE, PROMPT, DEFAULT_PROMPT_RESOURCE);
+  }
+
+  public String generateSystemPrompt() {
+    return resolvePrompt("[ai-prompt]", GENERATE_PROMPT_FILE, GENERATE_PROMPT,
+      DEFAULT_GENERATE_PROMPT_RESOURCE);
+  }
+
+  private String resolvePrompt(String tag, String fileKey, String inlineKey, String resource) {
+    String path = raw(fileKey);
     if (!isBlank(path)) {
-      String prompt = promptFromFile(path);
-      logPromptSource("file(" + path + ")", prompt);
+      String prompt = promptFromFile(path, fileKey);
+      logPromptSource(tag, "file(" + path + ")", prompt);
       return prompt;
     }
-    String inline = raw(PROMPT);
+    String inline = raw(inlineKey);
     if (!isBlank(inline)) {
-      logPromptSource("inline", inline);
+      logPromptSource(tag, "inline", inline);
       return inline;
     }
-    String prompt = defaultPrompt();
-    logPromptSource("bundled default", prompt);
+    String prompt = defaultPrompt(resource);
+    logPromptSource(tag, "bundled default", prompt);
     return prompt;
   }
 
-  private void logPromptSource(String source, String prompt) {
+  private void logPromptSource(String tag, String source, String prompt) {
     Level verbose = debug() ? Level.INFO : Level.FINE;
-    LOG.log(verbose, () -> "[ai-verify] prompt source=" + source + " (" + prompt.length() + " chars)");
+    LOG.log(verbose, () -> tag + " prompt source=" + source + " (" + prompt.length() + " chars)");
   }
 
-  static String defaultPrompt() {
-    try (InputStream in = AiVerifyConfig.class.getResourceAsStream(DEFAULT_PROMPT_RESOURCE)) {
+  static String defaultPrompt(String resource) {
+    try (InputStream in = AiVerifyConfig.class.getResourceAsStream(resource)) {
       if (in == null) {
-        throw new IllegalStateException("Default prompt resource missing: " + DEFAULT_PROMPT_RESOURCE);
+        throw new IllegalStateException("Default prompt resource missing: " + resource);
       }
       return new String(in.readAllBytes(), StandardCharsets.UTF_8);
     } catch (IOException e) {
@@ -109,13 +121,13 @@ public final class AiVerifyConfig {
     }
   }
 
-  private static String promptFromFile(String path) {
+  private static String promptFromFile(String path, String fileKey) {
     try {
       return Files.readString(Path.of(path), StandardCharsets.UTF_8);
     } catch (NoSuchFileException e) {
-      throw new IllegalStateException(PROMPT_FILE + " points to a missing file: " + path);
+      throw new IllegalStateException(fileKey + " points to a missing file: " + path);
     } catch (IOException e) {
-      throw new IllegalStateException(PROMPT_FILE + " could not read file " + path + ": " + e.getMessage());
+      throw new IllegalStateException(fileKey + " could not read file " + path + ": " + e.getMessage());
     }
   }
 

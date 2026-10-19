@@ -107,6 +107,49 @@ class AiVerifyConfigTest {
   }
 
   @Test
+  void inlineGeneratePromptOverridesDefault() {
+    Properties props = props("llm.generate.prompt", "generate prompt");
+    assertEquals("generate prompt", new AiVerifyConfig(props).generateSystemPrompt());
+  }
+
+  @Test
+  void generatePromptFileOverridesInlineAndDefault(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("gen.md");
+    Files.writeString(file, "# Generate\nsecond", StandardCharsets.UTF_8);
+    Properties props = props("llm.generate.prompt", "inline",
+      "llm.generate.prompt.file", file.toString());
+    assertEquals("# Generate\nsecond", new AiVerifyConfig(props).generateSystemPrompt());
+  }
+
+  @Test
+  void generatePromptFallsBackToBundledResource() {
+    String prompt = new AiVerifyConfig(new Properties()).generateSystemPrompt();
+    assertTrue(prompt.contains("wiki text"));
+    assertFalse(prompt.contains("JSON object"), "must not be the verify prompt");
+  }
+
+  @Test
+  void missingGeneratePromptFileThrowsListingPropertyAndPath(@TempDir Path dir) {
+    String path = dir.resolve("does-not-exist.md").toString();
+    IllegalStateException e = assertThrows(IllegalStateException.class,
+      () -> new AiVerifyConfig(props("llm.generate.prompt.file", path)).generateSystemPrompt());
+    assertTrue(e.getMessage().contains("llm.generate.prompt.file"));
+    assertTrue(e.getMessage().contains(path));
+  }
+
+  @Test
+  void generatePromptSourceIsLoggedAtDebugLevel(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("gen.md");
+    Files.writeString(file, "gen prompt", StandardCharsets.UTF_8);
+
+    try (LogCapture logs = new LogCapture(AiVerifyConfig.class)) {
+      new AiVerifyConfig(props("llm.debug", "true", "llm.generate.prompt.file", file.toString()))
+        .generateSystemPrompt();
+      assertTrue(logs.has(Level.INFO, "prompt source=file"));
+    }
+  }
+
+  @Test
   void invalidNumbersFallBackToDefaults() {
     Properties props = props("llm.max.tokens", "abc", "llm.timeout.seconds", "xyz");
     AiVerifyConfig config = new AiVerifyConfig(props);
