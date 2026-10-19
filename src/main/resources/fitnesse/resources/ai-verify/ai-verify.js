@@ -48,15 +48,23 @@
     if (toolbar.querySelector('#tt-ai-prompt')) {
       return;
     }
-    var button = document.createElement('input');
+    var button = document.createElement('button');
     button.type = 'button';
     button.id = 'tt-ai-prompt';
-    button.value = 'Ai Prompt to FitNesse';
-    button.title = 'Prompt an AI to generate FitNesse wiki content.';
+    button.className = 'button ai-verify-button';
+    button.title = 'Ai Prompt to FitNesse: prompt an AI to generate FitNesse wiki content.';
+    button.innerHTML = '<svg class="ai-verify-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">'
+      + '<path fill="currentColor" d="M8 0l1.8 5.2L15 7l-5.2 1.8L8 14l-1.8-5.2L1 7l5.2-1.8z"/></svg>'
+      + '<span class="ai-verify-label">Ai Prompt</span>';
     button.addEventListener('click', function () {
       openPromptModal();
     });
-    toolbar.appendChild(button);
+    var formatButton = toolbar.querySelector('#tt-format-wiki');
+    if (formatButton) {
+      toolbar.insertBefore(button, formatButton);
+    } else {
+      toolbar.appendChild(button);
+    }
     state.promptButton = button;
   }
 
