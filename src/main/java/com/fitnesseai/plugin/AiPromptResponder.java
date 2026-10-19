@@ -12,11 +12,18 @@ import fitnesse.wiki.WikiPage;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class AiPromptResponder implements SecureResponder {
   private static final Logger LOG = Logger.getLogger(AiPromptResponder.class.getName());
+  private static final Duration PAGE_TYPE_CACHE_TTL = Duration.ofMinutes(1);
+  private static final ConcurrentHashMap<String, Pair<String, Instant>> pageTypeCache = new ConcurrentHashMap<>();
+
+  private record Pair<K, V>(K key, V value) {}
 
   @Override
   public Response makeResponse(FitNesseContext context, Request request) throws Exception {
@@ -76,9 +83,15 @@ public class AiPromptResponder implements SecureResponder {
     if (pageName == null || pageName.isBlank()) {
       return "";
     }
+    var cached = pageTypeCache.get(pageName);
+    if (cached != null && !cached.value().isBefore(Instant.now())) {
+      return cached.key();
+    }
     try {
       WikiPage page = context.getRootPage().getPageCrawler().getPage(PathParser.parse(pageName));
-      return page == null ? "" : PageType.fromWikiPage(page).toString();
+      String type = page == null ? "" : PageType.fromWikiPage(page).toString();
+      pageTypeCache.put(pageName, new Pair<>(type, Instant.now().plus(Duration.ofMinutes(1))));
+      return type;
     } catch (RuntimeException e) {
       return "";
     }
