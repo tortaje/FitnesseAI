@@ -72,8 +72,8 @@ class DiffServiceTest {
 
   @Test
   void commentOutsideAnyHunkIsIgnored() {
-    DiffService.Result result = service.compute("a\nb\nc", "a\nB\nc",
-      List.of(new LlmClient.Comment(3, "hors hunk")));
+    DiffService.Result result = service.compute("a\\nb\\nc", "a\\nB\\nc",
+      List.of(new LlmClient.Comment(100, "hors hunk")));
 
     assertNull(result.hunks().get(0).comment());
   }

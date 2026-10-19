@@ -97,3 +97,6 @@ Rules for the JSON:
 - "explanation" is a short reason (one sentence).
 - If the page is already correct, return the unchanged content with an empty comments array: {"corrected": "...", "comments": []}.
 - If you cannot produce valid JSON for any reason, still output the best-effort JSON object with the original content unchanged and a single comment explaining the issue.
+Example (input page has 4 lines, you fix a typo on line 3):
+{"corrected": "line one\nline two\nline three fixed\nline four", "comments": [{"line": 3, "explanation": "Fixed typo on line 3."}]}
+
