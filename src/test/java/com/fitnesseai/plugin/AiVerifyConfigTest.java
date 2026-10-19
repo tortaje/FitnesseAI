@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -85,6 +86,24 @@ class AiVerifyConfigTest {
     assertTrue(new AiVerifyConfig(props("llm.debug", "true")).debug());
     assertTrue(new AiVerifyConfig(props("llm.debug", " TRUE ")).debug());
     assertFalse(new AiVerifyConfig(props("llm.debug", "yes")).debug());
+  }
+
+  @Test
+  void promptSourceIsLoggedAtDebugLevel(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("p.md");
+    Files.writeString(file, "hello prompt", StandardCharsets.UTF_8);
+
+    try (LogCapture logs = new LogCapture(AiVerifyConfig.class)) {
+      new AiVerifyConfig(props("llm.debug", "true", "llm.prompt.file", file.toString())).systemPrompt();
+      assertTrue(logs.has(Level.INFO, "prompt source=file"));
+      assertTrue(logs.has(Level.INFO, file.toString()));
+    }
+
+    try (LogCapture logs = new LogCapture(AiVerifyConfig.class)) {
+      new AiVerifyConfig(props("llm.prompt.file", file.toString())).systemPrompt();
+      assertFalse(logs.has(Level.INFO, "prompt source=file"));
+      assertTrue(logs.has(Level.FINE, "prompt source=file"));
+    }
   }
 
   @Test

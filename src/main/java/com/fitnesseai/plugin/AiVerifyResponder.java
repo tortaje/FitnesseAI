@@ -13,8 +13,11 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class AiVerifyResponder implements SecureResponder {
+  private static final Logger LOG = Logger.getLogger(AiVerifyResponder.class.getName());
 
   @Override
   public Response makeResponse(FitNesseContext context, Request request) throws Exception {
@@ -40,19 +43,25 @@ public class AiVerifyResponder implements SecureResponder {
     }
 
     LlmClient.Result llmResult;
+    Level verbose = config.debug() ? Level.INFO : Level.FINE;
+    LOG.log(verbose, () -> "[ai-verify] verify requested contentLength=" + content.length());
     try {
       llmResult = new LlmClient().chat(config, content);
     } catch (LlmException e) {
+      LOG.warning("[ai-verify] LLM error: " + e.getMessage());
       JSONObject error = new JSONObject().put("error", e.getMessage());
       if (e.rawBody() != null) {
         error.put("details", e.rawBody());
       }
       return jsonResponse(502, error);
     } catch (RuntimeException e) {
+      LOG.log(Level.WARNING, "[ai-verify] unexpected error", e);
       return jsonResponse(502, new JSONObject().put("error", e.getMessage()));
     }
 
     DiffService.Result diff = new DiffService().compute(content, llmResult.corrected(), llmResult.comments());
+    LOG.log(verbose, () -> "[ai-verify] diff hunks=" + diff.hunks().size()
+      + " added=" + diff.stats().added() + " removed=" + diff.stats().removed());
 
     JSONArray hunks = new JSONArray();
     for (DiffService.Hunk hunk : diff.hunks()) {

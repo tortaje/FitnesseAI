@@ -10,8 +10,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class AiVerifyConfig {
+  private static final Logger LOG = Logger.getLogger(AiVerifyConfig.class.getName());
+
   public static final String BASE_URL = "llm.base.url";
   public static final String API_KEY = "llm.api.key";
   public static final String MODEL = "llm.model";
@@ -75,13 +79,23 @@ public final class AiVerifyConfig {
   public String systemPrompt() {
     String path = raw(PROMPT_FILE);
     if (!isBlank(path)) {
-      return promptFromFile(path);
+      String prompt = promptFromFile(path);
+      logPromptSource("file(" + path + ")", prompt);
+      return prompt;
     }
     String inline = raw(PROMPT);
     if (!isBlank(inline)) {
+      logPromptSource("inline", inline);
       return inline;
     }
-    return defaultPrompt();
+    String prompt = defaultPrompt();
+    logPromptSource("bundled default", prompt);
+    return prompt;
+  }
+
+  private void logPromptSource(String source, String prompt) {
+    Level verbose = debug() ? Level.INFO : Level.FINE;
+    LOG.log(verbose, () -> "[ai-verify] prompt source=" + source + " (" + prompt.length() + " chars)");
   }
 
   static String defaultPrompt() {

@@ -19,6 +19,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -190,5 +191,40 @@ class AiVerifyResponderTest {
     assertEquals(502, lastStatus);
     assertTrue(body.getString("error").contains("llm.prompt.file"));
     assertTrue(body.getString("error").contains(missing));
+  }
+
+  @Test
+  void debugLogsVerifyRequestAndDiffSummary() throws Exception {
+    Properties props = new Properties();
+    props.setProperty("llm.base.url", startMockLlm("hello\nWorld\n"));
+    props.setProperty("llm.model", "test-model");
+    props.setProperty("llm.debug", "true");
+    context = FitNesseUtil.makeTestContext(props);
+
+    try (LogCapture logs = new LogCapture(AiVerifyResponder.class)) {
+      dispatch(verifyRequest("hello\nworld\n"));
+      assertTrue(logs.has(Level.INFO, "verify requested"));
+      assertTrue(logs.has(Level.INFO, "hunks=1"));
+    }
+  }
+
+  @Test
+  void llmErrorsAreLoggedAsWarnings() throws Exception {
+    llmServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    llmServer.createContext("/v1/chat/completions", exchange -> {
+      byte[] bytes = "provider exploded".getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(500, bytes.length);
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(bytes);
+      }
+    });
+    llmServer.start();
+    context = contextWithLlm("http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1");
+
+    try (LogCapture logs = new LogCapture(AiVerifyResponder.class)) {
+      dispatch(verifyRequest("content"));
+      assertEquals(502, lastStatus);
+      assertTrue(logs.has(Level.WARNING, "LLM error"));
+    }
   }
 }
