@@ -12,6 +12,9 @@
     hunks: [],
     checked: {},
     pageName: '',
+    promptModal: null,
+    prompt: { messages: [], busy: false },
+    promptButton: null,
     previouslyFocused: null
   };
 
@@ -198,7 +201,7 @@
   }
 
   function trapFocus(e, overlay) {
-    var focusables = overlay.querySelectorAll('button:not([hidden]), input, [href], [tabindex]:not([tabindex="-1"])');
+    var focusables = overlay.querySelectorAll('button:not([hidden]), input, textarea, [href], [tabindex]:not([tabindex="-1"])');
     var visible = [];
     for (var i = 0; i < focusables.length; i++) {
       if (focusables[i].offsetParent !== null) {
@@ -509,6 +512,141 @@
       setBusy(false);
       showErrorModal('Could not reach the FitNesse server: ' + err.message, null);
     });
+  }
+
+  function ensurePromptModal() {
+    if (state.promptModal) {
+      return state.promptModal;
+    }
+    var overlay = document.createElement('div');
+    overlay.className = 'ai-verify-overlay';
+    overlay.innerHTML = [
+      '<div class="ai-verify-modal ai-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="ai-prompt-title">',
+      '  <div class="ai-verify-header">',
+      '    <h2 id="ai-prompt-title"></h2>',
+      '    <button type="button" class="ai-verify-close" aria-label="Close">&#10005;</button>',
+      '  </div>',
+      '  <div class="ai-prompt-panels">',
+      '    <div class="ai-prompt-chat">',
+      '      <div class="ai-prompt-log"></div>',
+      '      <div class="ai-prompt-input-row">',
+      '        <textarea class="ai-prompt-input" rows="3" placeholder="Describe the FitNesse page you want (Enter to send, Shift+Enter for a new line)"></textarea>',
+      '        <button type="button" class="ai-prompt-send">Send</button>',
+      '      </div>',
+      '    </div>',
+      '    <div class="ai-prompt-side">',
+      '      <div class="ai-prompt-side-label">Generated content</div>',
+      '      <textarea class="ai-prompt-content" wrap="off" spellcheck="false"></textarea>',
+      '    </div>',
+      '  </div>',
+      '  <div class="ai-verify-error" hidden><pre class="ai-verify-error-text"></pre></div>',
+      '  <div class="ai-verify-footer ai-prompt-footer">',
+      '    <button type="button" class="ai-verify-cancel">Cancel</button>',
+      '    <span class="ai-prompt-footer-actions">',
+      '      <button type="button" class="ai-verify-retry" hidden>Retry</button>',
+      '      <button type="button" class="ai-prompt-save">Save</button>',
+      '    </span>',
+      '  </div>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(overlay);
+    state.promptModal = overlay;
+
+    overlay.addEventListener('mousedown', function (e) {
+      if (e.target === overlay) {
+        closePromptModal();
+      }
+    });
+    overlay.querySelector('.ai-verify-close').addEventListener('click', closePromptModal);
+    overlay.querySelector('.ai-verify-cancel').addEventListener('click', closePromptModal);
+    overlay.querySelector('.ai-prompt-save').addEventListener('click', savePrompt);
+    overlay.querySelector('.ai-prompt-send').addEventListener('click', sendPrompt);
+    overlay.querySelector('.ai-verify-retry').addEventListener('click', sendPromptRequest);
+    overlay.querySelector('.ai-prompt-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendPrompt();
+      }
+    });
+    overlay.querySelector('.ai-prompt-input').addEventListener('input', updatePromptSendButton);
+    overlay.querySelector('.ai-prompt-content').addEventListener('input', updatePromptSaveButton);
+    overlay.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closePromptModal();
+        return;
+      }
+      if (e.key === 'Tab') {
+        trapFocus(e, overlay);
+      }
+    });
+    return overlay;
+  }
+
+  function openPromptModal() {
+    var overlay = ensurePromptModal();
+    state.prompt = { messages: [], busy: false };
+    overlay.querySelector('.ai-prompt-log').innerHTML = '';
+    overlay.querySelector('.ai-prompt-input').value = '';
+    overlay.querySelector('.ai-prompt-content').value = getPageContent() || '';
+    overlay.querySelector('.ai-verify-error').hidden = true;
+    overlay.querySelector('.ai-verify-retry').hidden = true;
+    overlay.querySelector('#ai-prompt-title').textContent =
+      'Ai Prompt to FitNesse — ' + currentPageName();
+    updatePromptSendButton();
+    updatePromptSaveButton();
+    state.previouslyFocused = document.activeElement;
+    overlay.style.display = 'flex';
+    overlay.querySelector('.ai-prompt-input').focus();
+  }
+
+  function closePromptModal() {
+    if (!state.promptModal) {
+      return;
+    }
+    state.promptModal.style.display = 'none';
+    if (state.previouslyFocused && state.previouslyFocused.focus) {
+      state.previouslyFocused.focus();
+    }
+  }
+
+  function savePrompt() {
+    var overlay = ensurePromptModal();
+    setPageContent(overlay.querySelector('.ai-prompt-content').value);
+    closePromptModal();
+  }
+
+  function updatePromptSendButton() {
+    var overlay = ensurePromptModal();
+    var input = overlay.querySelector('.ai-prompt-input');
+    overlay.querySelector('.ai-prompt-send').disabled =
+      state.prompt.busy || input.value.trim() === '';
+  }
+
+  function updatePromptSaveButton() {
+    var overlay = ensurePromptModal();
+    overlay.querySelector('.ai-prompt-save').disabled =
+      overlay.querySelector('.ai-prompt-content').value === '';
+  }
+
+  function setPromptBusy(busy) {
+    state.prompt.busy = busy;
+    var overlay = ensurePromptModal();
+    var send = overlay.querySelector('.ai-prompt-send');
+    send.textContent = busy ? 'Generating…' : 'Send';
+    if (state.promptButton) {
+      state.promptButton.disabled = busy;
+    }
+    updatePromptSendButton();
+  }
+
+  function appendPromptBubble(role, text) {
+    var log = ensurePromptModal().querySelector('.ai-prompt-log');
+    var bubble = document.createElement('div');
+    bubble.className = 'ai-prompt-bubble '
+      + (role === 'user' ? 'ai-prompt-bubble-user' : 'ai-prompt-bubble-assistant');
+    bubble.textContent = text;
+    log.appendChild(bubble);
+    log.scrollTop = log.scrollHeight;
   }
 
   onReady(function () {
