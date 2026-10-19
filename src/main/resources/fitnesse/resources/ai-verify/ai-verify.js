@@ -605,9 +605,6 @@
     if (state.modal && state.modal.style.display && state.modal.style.display !== 'none') {
       return;
     }
-    if (state.promptButton) {
-      state.promptButton.disabled = false;
-    }
     var overlay = ensurePromptModal();
     state.promptGeneration++;
     state.prompt = { messages: [], busy: false };
@@ -634,6 +631,7 @@
     if (state.promptButton) {
       state.promptButton.disabled = false;
     }
+    state.prompt.busy = false;
     if (state.promptPreviouslyFocused && state.promptPreviouslyFocused.focus) {
       state.promptPreviouslyFocused.focus();
     }
