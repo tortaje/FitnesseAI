@@ -1,103 +1,115 @@
 # FitNesse AI Verify Plugin
 
-Plugin FitNesse qui ajoute un bouton **Verify with AI** à la page d'édition wiki :
-le contenu du textarea est envoyé à un LLM compatible OpenAI, les corrections
-proposées sont affichées en diff sélectionnable par hunk, et Appliquer met à jour
-le textarea (sauvegarde manuelle habituelle ensuite).
+FitNesse plugin that adds a **Verify with AI** button to the wiki edit page:
+the textarea content is sent to an OpenAI-compatible LLM, and the proposed
+corrections are shown in a selectable side-by-side diff. Apply updates the
+textarea (manual save as usual afterwards).
 
-## Prérequis
+## Requirements
 
-- FitNesse standalone (testé avec 20251025, devrait fonctionner avec toute version récente ≥ 2023)
+- FitNesse standalone (tested with 20251025 and 20260313; any recent version ≥ 2023 should work)
 - Java 21+
 
 ## Installation
 
-1. Build :
+1. Build:
 
    ```bash
    mvn package
    ```
 
-   Le JAR produit est `target/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar`.
+   The produced JAR is `target/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar`.
 
-2. Copier le JAR dans le répertoire `plugins/` de votre instance FitNesse standalone :
+2. Copy the JAR into the `plugins/` directory of your FitNesse standalone instance:
 
    ```bash
-   cp target/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar <dossier-fitnesse>/plugins/
+   cp target/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar <fitnesse-folder>/plugins/
    ```
 
-3. Configurer `plugins.properties` à la **racine** de FitNesse (à côté de `FitNesseRoot`, *pas* dans `plugins/`) :
+3. Configure `plugins.properties` at the **root** of FitNesse (next to `FitNesseRoot`, *not* inside `plugins/`):
 
    ```properties
    llm.base.url=http://localhost:11434/v1
    llm.api.key=
    llm.model=llama3.1
-   # Prompt système en markdown relu à chaque clic Verify (pas de redémarrage)
-   llm.prompt.file=/chemin/vers/ai-verify-prompt.md
+   # Markdown system prompt, re-read on every Verify click (no restart needed)
+   llm.prompt.file=/path/to/ai-verify-prompt.md
+   # Verbose plugin logs (full LLM request/response dumps)
+   llm.debug=true
    ```
 
-   Propriétés :
+   Properties:
 
-   | Propriété            | Obligatoire | Défaut | Description                                              |
-   |----------------------|-------------|--------|----------------------------------------------------------|
-   | `llm.base.url`       | oui         | —      | URL de base de l'API compatible OpenAI (`.../v1`)        |
-   | `llm.model`          | oui         | —      | Nom du modèle                                            |
-   | `llm.api.key`        | non         | vide   | Bearer token (vide pour les endpoints locaux)            |
-   | `llm.max.tokens`     | non         | 4096   | `max_tokens` de la requête                                |
-   | `llm.timeout.seconds`| non         | 120    | Timeout HTTP                                             |
-   | `llm.prompt`         | non         | embarqué | Texte inline remplaçant le prompt système par défaut   |
-   | `llm.prompt.file`    | non         | —      | Chemin d'un fichier UTF-8 (`.md` recommandé) contenant le prompt système ; relu à chaque vérification, priorité sur `llm.prompt` |
+   | Property             | Required | Default  | Description                                                                    |
+   |----------------------|----------|----------|--------------------------------------------------------------------------------|
+   | `llm.base.url`       | yes      | —        | Base URL of the OpenAI-compatible API (`.../v1`)                                |
+   | `llm.model`          | yes      | —        | Model name                                                                     |
+   | `llm.api.key`        | no       | empty    | Bearer token (empty for local endpoints)                                       |
+   | `llm.max.tokens`     | no       | 4096     | Request `max_tokens`                                                           |
+   | `llm.timeout.seconds`| no       | 120      | HTTP timeout                                                                   |
+   | `llm.prompt`         | no       | bundled  | Inline text replacing the default system prompt                                |
+   | `llm.prompt.file`    | no       | —        | Path to a UTF-8 file (`.md` recommended) holding the system prompt; re-read on every verification, takes precedence over `llm.prompt` |
+   | `llm.debug`          | no       | `false`  | When `true`, logs the full LLM request/response payloads, the prompt source, the verify summary and diff internals at INFO level; when `false` these go to FINE (hidden by default). LLM errors are always logged as warnings |
 
-4. Redémarrer FitNesse (une seule fois : les propriétés `llm.*` sont lues au
-   démarrage). Ensuite, modifier le fichier `llm.prompt.file` prend effet au
-   prochain clic sur **Verify with AI** — sans redémarrage ni recompil.
+4. Restart FitNesse (once: the `llm.*` properties are read at startup). After that,
+   editing the `llm.prompt.file` file takes effect on the next **Verify with AI**
+   click — no restart or recompile needed.
 
-   Pour partir du prompt embarqué :
+   To start from the embedded prompt:
 
    ```bash
    unzip -p plugins/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar ai-verify-prompt.txt > ai-verify-prompt.md
    ```
 
-Aucune propriété de registration n'est nécessaire : le plugin se découvre via
-ServiceLoader (META-INF/services dans le JAR).
+No registration property is required: the plugin self-discovers through
+ServiceLoader (META-INF/services inside the JAR).
 
-## Utilisation
+## Usage
 
-1. Ouvrir une page existante en édition (`?edit`).
-2. Cliquer **Verify with AI** (à côté de Save). Le contenu courant du textarea est
-   analysé, modifications non sauvegardées comprises.
-3. Dans le modal : gauche = original, droite = proposition ; checkbox par hunk
-   (cochés par défaut) ; commentaires du LLM sous le hunk concerné.
-4. **Apply (n)** écrit le contenu fusionné dans le textarea — la sauvegarde reste
-   manuelle (bouton Save).
-5. Si le textarea a changé entre la vérification et Apply, l'application est refusée
-   (relancer la vérification).
+1. Open an existing page in edit mode (`?edit`).
+2. Click **Verify with AI** (next to Save). The current textarea content is
+   analysed, including unsaved changes.
+3. In the modal: both complete texts are shown side by side with line numbers on
+   both sides — unchanged lines in gray, corrections in red (original) and green
+   (corrected). Each correction block has a checkbox (checked by default) in the
+   left gutter; hover a corrected line to see the LLM's explanation as a tooltip.
+   A single scrollbar scrolls both sides together.
+4. **Apply (n)** writes the merged content into the textarea — saving stays
+   manual (Save button).
+5. If the textarea changed between verification and Apply, applying is refused
+   (re-run the verification).
 
 ## Limitations
 
-- Bouton disponible uniquement sur les pages existantes en mode édition (`?edit`),
-  pas sur la création de page (`?new`).
-- Le LLM doit respecter le format JSON attendu ; en cas de réponse non conforme,
-  le message d'erreur inclut le texte brut (repliable dans le modal).
+- The button only appears on existing pages in edit mode (`?edit`), not on page
+  creation (`?new`).
+- The LLM must respect the expected JSON format; on a non-conforming response,
+  the error message includes the raw text (expandable in the modal).
 
-## Checklist de validation manuelle (JS)
+## Manual validation checklist (JS)
 
-Pas de test automatisé JS dans ce projet. Après `mvn package` + installation :
+No automated JS tests in this project. After `mvn package` + installation:
 
-- [ ] Ouvrir `http://localhost:<port>/<Page>?edit` : le bouton « Verify with AI »
-      apparaît dans `#save_buttons` ; les onglets Réseau montrent un GET 200 sur
-      `.../files/fitnesse/ai-verify/ai-verify.js` et `...ai-verify.css`.
-- [ ] Sur une page non existante ou `?new` : pas de bouton.
-- [ ] Sans config LLM (`llm.*` absentes) : clic → message listant `llm.base.url`,
+- [ ] Open `http://localhost:<port>/<Page>?edit`: the "Verify with AI" button
+      appears in `#save_buttons`; the Network tab shows a GET 200 on
+      `.../files/fitnesse/ai-verify/ai-verify.js` and `...ai-verify.css`.
+- [ ] On a non-existent page or `?new`: no button.
+- [ ] Without LLM config (`llm.*` absent): click → message listing `llm.base.url`,
       `llm.model`.
-- [ ] Avec un endpoint LLM valide : clic → « Verifying… » puis modal avec hunks ;
-      décocher un hunk met Apply à jour le compteur ; Apply met à jour le textarea
-      (et l'éditeur WYSIWYG si actif) sans sauvegarder.
-- [ ] Aucune différence → « No corrections proposed. »
-- [ ] LLM en erreur (mauvaise URL) → bandeau d'erreur + bouton Retry.
-- [ ] Modifier le textarea pendant que le modal est ouvert, puis Apply → refus
-      avec message explicite.
-- [ ] Échap / clic hors modal / ✕ ferment le modal ; le focus revient au bouton.
-- [ ] Écran étroit (< 800px) : les colonnes du diff s'empilent.
-- [ ] Mode WYSIWYG actif : après Apply, basculer en mode texte montre le contenu
-      appliqué (pas d'écrasement par l'ancien contenu iframe).
+- [ ] With a valid LLM endpoint: click → "Verifying…" then a modal with both full
+      texts side by side, line numbers in both gutters, red/green corrections;
+      unchecking a correction updates the Apply counter; Apply updates the textarea
+      (and the WYSIWYG editor if active) without saving.
+- [ ] Hovering a corrected line shows the LLM explanation tooltip.
+- [ ] One horizontal scrollbar moves both sides together.
+- [ ] No differences → "No corrections proposed."
+- [ ] LLM error (bad URL) → error banner + Retry button; the failure is logged as
+      a warning in the FitNesse console.
+- [ ] Edit the textarea while the modal is open, then Apply → refused with an
+      explicit message.
+- [ ] Escape / click outside the modal / ✕ close the modal; focus returns to the button.
+- [ ] WYSIWYG mode active: after Apply, switching to text mode shows the applied
+      content (no overwrite by the old iframe content).
+- [ ] With `llm.debug=true`: the FitNesse console shows `[ai-verify]` INFO lines
+      (POST payload, LLM response, prompt source, diff summary). With the property
+      absent or `false`, only warnings appear.
