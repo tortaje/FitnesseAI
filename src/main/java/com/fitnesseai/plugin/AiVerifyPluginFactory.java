@@ -8,6 +8,7 @@ public class AiVerifyPluginFactory extends PluginFeatureFactoryBase {
   public void registerResponders(ResponderFactory responderFactory) {
     responderFactory.addResponder("ai-verify", AiVerifyResponder.class);
     responderFactory.addResponder("edit", AiVerifyEditResponder.class);
-    LOG.info("FitNesse AI Verify plugin loaded (responders: ai-verify, edit override)");
+    responderFactory.addResponder("new", AiVerifyNewPageResponder.class);
+    LOG.info("FitNesse AI Verify plugin loaded (responders: ai-verify, edit override, new override)");
   }
 }
