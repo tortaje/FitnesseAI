@@ -1,7 +1,7 @@
-# FitNesse AI Verify Plugin
+# FitNesse AI Plugin
 
-FitNesse plugin that adds a **Verify with AI** button to the wiki edit and
-new-page forms (`?edit` and `?new`):
+FitNesse plugin that adds **Verify with AI** and **Ai Prompt** buttons to the wiki edit
+and new-page forms (`?edit` and `?new`):
 the textarea content is sent to an OpenAI-compatible LLM, and the proposed
 corrections are shown in a selectable side-by-side diff. Apply updates the
 textarea (manual save as usual afterwards).

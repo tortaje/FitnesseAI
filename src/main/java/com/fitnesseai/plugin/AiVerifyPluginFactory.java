@@ -10,6 +10,6 @@ public class AiVerifyPluginFactory extends PluginFeatureFactoryBase {
     responderFactory.addResponder("edit", AiVerifyEditResponder.class);
     responderFactory.addResponder("new", AiVerifyNewPageResponder.class);
     responderFactory.addResponder("ai-prompt", AiPromptResponder.class);
-    LOG.info("FitNesse AI Verify plugin loaded (responders: ai-verify, edit override, new override, ai-prompt)");
+    LOG.info("FitNesse AI plugin loaded (responders: ai-verify, edit override, new override, ai-prompt)");
   }
 }
