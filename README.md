@@ -1,6 +1,7 @@
 # FitNesse AI Verify Plugin
 
-FitNesse plugin that adds a **Verify with AI** button to the wiki edit page:
+FitNesse plugin that adds a **Verify with AI** button to the wiki edit and
+new-page forms (`?edit` and `?new`):
 the textarea content is sent to an OpenAI-compatible LLM, and the proposed
 corrections are shown in a selectable side-by-side diff. Apply updates the
 textarea (manual save as usual afterwards).
@@ -66,7 +67,8 @@ ServiceLoader (META-INF/services inside the JAR).
 
 ## Usage
 
-1. Open an existing page in edit mode (`?edit`).
+1. Open a page in edit mode (`?edit`), or create a new one (static, test or
+   suite) via the **New** menu (`?new`).
 2. Click **Verify with AI** (next to Save). The current textarea content is
    analysed, including unsaved changes.
 3. In the modal: both complete texts are shown side by side with line numbers on
@@ -81,8 +83,6 @@ ServiceLoader (META-INF/services inside the JAR).
 
 ## Limitations
 
-- The button only appears on existing pages in edit mode (`?edit`), not on page
-  creation (`?new`).
 - The LLM must respect the expected JSON format; on a non-conforming response,
   the error message includes the raw text (expandable in the modal).
 
@@ -93,7 +93,12 @@ No automated JS tests in this project. After `mvn package` + installation:
 - [ ] Open `http://localhost:<port>/<Page>?edit`: the "Verify with AI" button
       appears in `#save_buttons`; the Network tab shows a GET 200 on
       `.../files/fitnesse/ai-verify/ai-verify.js` and `...ai-verify.css`.
-- [ ] On a non-existent page or `?new`: no button.
+- [ ] On `http://localhost:<port>/<Parent>?new&pageTemplate=.TemplateLibrary.TestPage`
+      (New → Test Page): the button appears in `#save_buttons` on the new-page
+      form (static and suite templates behave the same); the modal title shows
+      the page name typed in the "Page name" field (fallback: parent name).
+- [ ] On a non-existent page URL (e.g. `/BrandNew`): FitNesse shows the
+      create/edit form — the button appears there too.
 - [ ] Without LLM config (`llm.*` absent): click → message listing `llm.base.url`,
       `llm.model`.
 - [ ] With a valid LLM endpoint: click → "Verifying…" then a modal with both full
