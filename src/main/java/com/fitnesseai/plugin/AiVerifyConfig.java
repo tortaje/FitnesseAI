@@ -19,6 +19,7 @@ public final class AiVerifyConfig {
   public static final String TIMEOUT_SECONDS = "llm.timeout.seconds";
   public static final String PROMPT = "llm.prompt";
   public static final String PROMPT_FILE = "llm.prompt.file";
+  public static final String DEBUG = "llm.debug";
 
   public static final int DEFAULT_MAX_TOKENS = 4096;
   public static final int DEFAULT_TIMEOUT_SECONDS = 120;
@@ -65,6 +66,10 @@ public final class AiVerifyConfig {
 
   public int timeoutSeconds() {
     return intOr(TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS);
+  }
+
+  public boolean debug() {
+    return Boolean.parseBoolean(raw(DEBUG));
   }
 
   public String systemPrompt() {

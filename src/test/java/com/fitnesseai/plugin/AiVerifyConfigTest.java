@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -76,6 +77,14 @@ class AiVerifyConfigTest {
   void blankPromptFileFallsBackToDefault() {
     Properties props = props("llm.prompt.file", "   ");
     assertTrue(new AiVerifyConfig(props).systemPrompt().contains("JSON object"));
+  }
+
+  @Test
+  void debugDefaultsToFalseAndParsesTrue() {
+    assertFalse(new AiVerifyConfig(new Properties()).debug());
+    assertTrue(new AiVerifyConfig(props("llm.debug", "true")).debug());
+    assertTrue(new AiVerifyConfig(props("llm.debug", " TRUE ")).debug());
+    assertFalse(new AiVerifyConfig(props("llm.debug", "yes")).debug());
   }
 
   @Test
