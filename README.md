@@ -19,12 +19,12 @@ textarea (manual save as usual afterwards).
    mvn package
    ```
 
-   The produced JAR is `target/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar`.
+   The produced JAR is `target/fitnesse-ai-1.0.0-SNAPSHOT.jar`.
 
 2. Copy the JAR into the `plugins/` directory of your FitNesse standalone instance:
 
    ```bash
-   cp target/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar <fitnesse-folder>/plugins/
+   cp target/fitnesse-ai-1.0.0-SNAPSHOT.jar <fitnesse-folder>/plugins/
    ```
 
 3. Configure `plugins.properties` at the **root** of FitNesse (next to `FitNesseRoot`, *not* inside `plugins/`):
@@ -58,11 +58,11 @@ textarea (manual save as usual afterwards).
    editing the `llm.prompt.file` file takes effect on the next **Verify with AI**
    click — no restart or recompile needed.
 
-   To start from the embedded prompt:
+To start from the embedded prompt:
 
-   ```bash
-   unzip -p plugins/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar ai-verify-prompt.txt > ai-verify-prompt.md
-   ```
+    ```bash
+    unzip -p plugins/fitnesse-ai-1.0.0-SNAPSHOT.jar ai-verify-prompt.txt > ai-verify-prompt.md
+    ```
 
 No registration property is required: the plugin self-discovers through
 ServiceLoader (META-INF/services inside the JAR).
