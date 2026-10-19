@@ -28,6 +28,9 @@
     window.Wysiwyg.initialize = function (textarea) {
       var editor = originalInitialize.apply(this, arguments);
       state.editor = editor || null;
+      if (editor && editor.textareaToolbar) {
+        addPromptButton(editor.textareaToolbar);
+      }
       return editor;
     };
     window.Wysiwyg.__aiVerifyPatched = true;
@@ -39,6 +42,22 @@
     } else {
       fn();
     }
+  }
+
+  function addPromptButton(toolbar) {
+    if (toolbar.querySelector('#tt-ai-prompt')) {
+      return;
+    }
+    var button = document.createElement('input');
+    button.type = 'button';
+    button.id = 'tt-ai-prompt';
+    button.value = 'Ai Prompt to FitNesse';
+    button.title = 'Prompt an AI to generate FitNesse wiki content.';
+    button.addEventListener('click', function () {
+      openPromptModal();
+    });
+    toolbar.appendChild(button);
+    state.promptButton = button;
   }
 
   function detectContextRoot() {
@@ -586,6 +605,9 @@
     if (state.modal && state.modal.style.display && state.modal.style.display !== 'none') {
       return;
     }
+    if (state.promptButton) {
+      state.promptButton.disabled = false;
+    }
     var overlay = ensurePromptModal();
     state.promptGeneration++;
     state.prompt = { messages: [], busy: false };
@@ -609,6 +631,9 @@
     }
     state.promptGeneration++;
     state.promptModal.style.display = 'none';
+    if (state.promptButton) {
+      state.promptButton.disabled = false;
+    }
     if (state.promptPreviouslyFocused && state.promptPreviouslyFocused.focus) {
       state.promptPreviouslyFocused.focus();
     }
