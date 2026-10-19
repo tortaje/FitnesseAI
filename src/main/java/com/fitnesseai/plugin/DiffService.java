@@ -58,40 +58,26 @@ public class DiffService {
       hunkComments.add(new ArrayList<>());
     }
     if (comments != null && !geometries.isEmpty()) {
-      // Sort comments by line number so assignment follows document order.
+      // Sort comments by line number to recover document order.
       List<LlmClient.Comment> sorted = new ArrayList<>(comments);
       sorted.sort(Comparator.comparingInt(LlmClient.Comment::line));
+      sorted.removeIf(c -> c.line() <= 0);
 
-      int hi = 0;
-      for (LlmClient.Comment comment : sorted) {
-        if (comment.line() <= 0) {
-          continue;
-        }
-        // Advance pointer past hunks that are clearly before this comment.
-        while (hi + 1 < geometries.size()
-            && geometries.get(hi + 1).correctedStart() <= comment.line()) {
-          hi++;
-        }
-        // Pick the closer of the current and next hunk, if within tolerance.
-        int bestIndex = hi;
-        int bestDistance = Math.min(
-            Math.abs(comment.line() - geometries.get(hi).correctedStart()),
-            Math.abs(comment.line() - geometries.get(hi).startLine()));
-        if (hi + 1 < geometries.size()) {
-          int nextDistance = Math.min(
-              Math.abs(comment.line() - geometries.get(hi + 1).correctedStart()),
-              Math.abs(comment.line() - geometries.get(hi + 1).startLine()));
-          if (nextDistance < bestDistance) {
-            bestDistance = nextDistance;
-            bestIndex = hi + 1;
-          }
-        }
-        if (bestDistance <= COMMENT_TOLERANCE) {
-          hunkComments.get(bestIndex).add(comment.explanation());
-          hi = bestIndex;
-          // Advance so the next comment prefers subsequent hunks.
-          if (hi + 1 < geometries.size()) {
-            hi++;
+      int n = geometries.size();
+      int m = sorted.size();
+      if (m > 0) {
+        // Distribute comments across hunks in document order: the k-th comment
+        // (0-based) maps to hunk floor(k * n / m). This avoids pile-up when
+        // the model's line numbers are inaccurate, while keeping explanations
+        // aligned with the right region of the page.
+        for (int k = 0; k < m; k++) {
+          int hunkIndex = Math.min((k * n) / m, n - 1);
+          LlmClient.Comment c = sorted.get(k);
+          int distance = Math.min(
+              Math.abs(c.line() - geometries.get(hunkIndex).correctedStart()),
+              Math.abs(c.line() - geometries.get(hunkIndex).startLine()));
+          if (distance <= COMMENT_TOLERANCE * 3) {
+            hunkComments.get(hunkIndex).add(c.explanation());
           }
         }
       }
