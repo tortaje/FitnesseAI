@@ -61,6 +61,19 @@ class AiPromptResponderTest {
     return "http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1";
   }
 
+  private String startFailingMockLlm() throws IOException {
+    llmServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    llmServer.createContext("/v1/chat/completions", exchange -> {
+      byte[] bytes = "provider exploded".getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(500, bytes.length);
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(bytes);
+      }
+    });
+    llmServer.start();
+    return "http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1";
+  }
+
   private Properties llmProps(String baseUrl) {
     Properties props = new Properties();
     props.setProperty("llm.base.url", baseUrl);
@@ -246,16 +259,7 @@ class AiPromptResponderTest {
 
   @Test
   void llmFailureReturns502WithErrorAndDetails() throws Exception {
-    llmServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    llmServer.createContext("/v1/chat/completions", exchange -> {
-      byte[] bytes = "provider exploded".getBytes(StandardCharsets.UTF_8);
-      exchange.sendResponseHeaders(500, bytes.length);
-      try (OutputStream os = exchange.getResponseBody()) {
-        os.write(bytes);
-      }
-    });
-    llmServer.start();
-    context = FitNesseUtil.makeTestContext(llmProps("http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1"));
+    context = FitNesseUtil.makeTestContext(llmProps(startFailingMockLlm()));
 
     JSONObject body = dispatch(promptRequest(validPayload()));
 
@@ -279,21 +283,24 @@ class AiPromptResponderTest {
 
   @Test
   void llmErrorsAreLoggedAsWarnings() throws Exception {
-    llmServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    llmServer.createContext("/v1/chat/completions", exchange -> {
-      byte[] bytes = "provider exploded".getBytes(StandardCharsets.UTF_8);
-      exchange.sendResponseHeaders(500, bytes.length);
-      try (OutputStream os = exchange.getResponseBody()) {
-        os.write(bytes);
-      }
-    });
-    llmServer.start();
-    context = FitNesseUtil.makeTestContext(llmProps("http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1"));
+    context = FitNesseUtil.makeTestContext(llmProps(startFailingMockLlm()));
 
     try (LogCapture logs = new LogCapture(AiPromptResponder.class)) {
       dispatch(promptRequest(validPayload()));
       assertEquals(502, lastStatus);
       assertTrue(logs.has(Level.WARNING, "LLM error"));
     }
+  }
+
+  @Test
+  void runtimeFailureReturns502() throws Exception {
+    Properties props = llmProps("::bad");
+
+    context = FitNesseUtil.makeTestContext(props);
+
+    JSONObject body = dispatch(promptRequest(validPayload()));
+
+    assertEquals(502, lastStatus);
+    assertTrue(body.getString("error").length() > 0);
   }
 }
