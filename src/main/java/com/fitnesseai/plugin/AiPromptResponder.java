@@ -45,6 +45,21 @@ public class AiPromptResponder implements SecureResponder {
       new JSONObject().put("error", "Not implemented yet"));
   }
 
+  static JSONArray buildMessages(String systemPrompt, String pageName, String pageType,
+                                 String pageContent, JSONArray transcript) {
+    String system = systemPrompt
+      + "\n\nPage name: " + pageName
+      + "\nPage type: " + pageType;
+    JSONArray messages = new JSONArray()
+      .put(new JSONObject().put("role", "system").put("content", system))
+      .put(new JSONObject().put("role", "user").put("content",
+        "Current page content (possibly hand-edited):\n" + pageContent));
+    for (int i = 0; i < transcript.length(); i++) {
+      messages.put(transcript.get(i));
+    }
+    return messages;
+  }
+
   @Override
   public SecureOperation getSecureOperation() {
     return new SecureReadOperation();

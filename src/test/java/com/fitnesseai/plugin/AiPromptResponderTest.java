@@ -139,4 +139,39 @@ class AiPromptResponderTest {
     assertEquals("llm.base.url", missing.getString(0));
     assertEquals("llm.model", missing.getString(1));
   }
+
+  @Test
+  void buildMessagesPutsSystemThenFreshContentThenTranscript() {
+    JSONArray transcript = new JSONArray()
+      .put(new JSONObject().put("role", "user").put("content", "first prompt"))
+      .put(new JSONObject().put("role", "assistant").put("content", "!1 draft"))
+      .put(new JSONObject().put("role", "user").put("content", "second prompt"));
+
+    JSONArray out = AiPromptResponder.buildMessages("GENERATION PROMPT", "LoginTest", "Test",
+      "!1 current", transcript);
+
+    assertEquals(5, out.length());
+    JSONObject system = out.getJSONObject(0);
+    assertEquals("system", system.getString("role"));
+    assertTrue(system.getString("content").startsWith("GENERATION PROMPT"));
+    assertTrue(system.getString("content").contains("Page name: LoginTest"));
+    assertTrue(system.getString("content").contains("Page type: Test"));
+    JSONObject fresh = out.getJSONObject(1);
+    assertEquals("user", fresh.getString("role"));
+    assertTrue(fresh.getString("content").contains("Current page content"));
+    assertTrue(fresh.getString("content").contains("!1 current"));
+    assertEquals("first prompt", out.getJSONObject(2).getString("content"));
+    assertEquals("!1 draft", out.getJSONObject(3).getString("content"));
+    assertEquals("second prompt", out.getJSONObject(4).getString("content"));
+  }
+
+  @Test
+  void buildMessagesIncludesContentBlockOnFirstTurn() {
+    JSONArray out = AiPromptResponder.buildMessages("S", "NewPage", "Static", "",
+      new JSONArray().put(new JSONObject().put("role", "user").put("content", "hello")));
+
+    assertEquals(3, out.length());
+    assertTrue(out.getJSONObject(1).getString("content").contains("Current page content"));
+    assertEquals("hello", out.getJSONObject(2).getString("content"));
+  }
 }
