@@ -59,7 +59,7 @@ public class AiVerifyResponder implements SecureResponder {
       return jsonResponse(502, new JSONObject().put("error", e.getMessage()));
     }
 
-    DiffService.Result diff = new DiffService().compute(content, llmResult.corrected(), llmResult.comments());
+    DiffService.Result diff = new DiffService().compute(content, llmResult.corrected(), llmResult.comments(), config.debug());
     LOG.log(verbose, () -> "[ai-verify] diff hunks=" + diff.hunks().size()
       + " added=" + diff.stats().added() + " removed=" + diff.stats().removed());
 

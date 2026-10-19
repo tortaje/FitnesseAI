@@ -7,8 +7,11 @@ import difflib.DiffUtils;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DiffService {
+  private static final Logger LOG = Logger.getLogger(DiffService.class.getName());
 
   private static final int COMMENT_TOLERANCE = 5;
   public static final String TYPE_ADDED = "added";
@@ -21,6 +24,11 @@ public class DiffService {
   public record Result(List<Hunk> hunks, Stats stats) {}
 
   public Result compute(String original, String corrected, List<LlmClient.Comment> comments) {
+    return compute(original, corrected, comments, false);
+  }
+
+  public Result compute(String original, String corrected, List<LlmClient.Comment> comments, boolean debug) {
+    Level verbose = debug ? Level.INFO : Level.FINE;
     List<String> originalLines = List.of(original.split("\n", -1));
     List<String> correctedLines = List.of(corrected.split("\n", -1));
 
@@ -51,6 +59,8 @@ public class DiffService {
       geometries.add(new Geometry(id++, type, startLine, correctedStart, hunkCorrected.size(),
         hunkOriginal, hunkCorrected));
     }
+    LOG.log(verbose, "[ai-verify] diff deltas=" + geometries.size()
+      + " added=" + added + " removed=" + removed);
 
     // Second pass: assign each comment to at most one hunk.
     List<List<String>> hunkComments = new ArrayList<>();
@@ -77,7 +87,12 @@ public class DiffService {
               Math.abs(c.line() - geometries.get(hunkIndex).correctedStart()),
               Math.abs(c.line() - geometries.get(hunkIndex).startLine()));
           if (distance <= COMMENT_TOLERANCE * 3) {
+            LOG.log(verbose, () -> "[ai-verify] comment line=" + c.line()
+              + " assigned to hunk=" + hunkIndex);
             hunkComments.get(hunkIndex).add(c.explanation());
+          } else {
+            LOG.log(verbose, () -> "[ai-verify] comment line=" + c.line()
+              + " dropped (distance=" + distance + ", tolerance=" + (COMMENT_TOLERANCE * 3) + ")");
           }
         }
       }

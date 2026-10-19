@@ -5,11 +5,13 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
 
 import static com.fitnesseai.plugin.DiffService.TYPE_ADDED;
 import static com.fitnesseai.plugin.DiffService.TYPE_MODIFIED;
 import static com.fitnesseai.plugin.DiffService.TYPE_REMOVED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -125,6 +127,23 @@ class DiffServiceTest {
     assertEquals(1, result.hunks().get(0).startLine());
     assertEquals(3, result.hunks().get(1).startLine());
     assertEquals(5, result.hunks().get(2).startLine());
+  }
+
+  @Test
+  void debugLogsDiffSummaryAndCommentAssignment() {
+    try (LogCapture logs = new LogCapture(DiffService.class)) {
+      service.compute("a\nb\nc", "a\nB\nc", List.of(new LlmClient.Comment(2, "cap")), true);
+      assertTrue(logs.has(Level.INFO, "diff deltas=1"));
+      assertTrue(logs.has(Level.INFO, "comment line=2 assigned to hunk=0"));
+    }
+
+    try (LogCapture logs = new LogCapture(DiffService.class)) {
+      service.compute("a\nb\nc", "a\nB\nc", List.of(new LlmClient.Comment(100, "loin")));
+      assertFalse(logs.has(Level.INFO, "diff deltas="));
+      assertFalse(logs.has(Level.INFO, "assigned"));
+      assertTrue(logs.has(Level.FINE, "diff deltas=1"));
+      assertTrue(logs.has(Level.FINE, "comment line=100 dropped"));
+    }
   }
 
   /** Mirror of the merge algorithm implemented in ai-verify.js — keeps both sides in lockstep. */
