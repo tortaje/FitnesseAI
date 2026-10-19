@@ -89,7 +89,10 @@
 }
 
 .ai-verify-table {
-  border-collapse: collapse;
+  border: none;
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
   width: max-content;
   min-width: 100%;
   font-family: Menlo, Consolas, monospace;
@@ -101,6 +104,7 @@
   position: sticky;
   top: 0;
   background: #f5f5f5;
+  border: none;
   border-bottom: 1px solid #ddd;
   padding: 0.4em 0.8em;
   text-align: left;
@@ -119,7 +123,17 @@
   text-align: right;
   color: #999;
   padding: 0 0.6em;
+  -webkit-user-select: none;
   user-select: none;
+}
+
+.ai-verify-table td {
+  border: none;
+}
+
+.ai-verify-table th.ai-verify-gutter {
+  text-align: right;
+  padding-right: 0.6em;
 }
 
 .ai-verify-text {
