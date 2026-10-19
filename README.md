@@ -82,7 +82,8 @@ ServiceLoader (META-INF/services inside the JAR).
    manual (Save button).
 5. If the textarea changed between verification and Apply, applying is refused
    (re-run the verification).
-6. **Ai Prompt to FitNesse** (text-area toolbar, next to *Spreadsheet to FitNesse*)
+6. **Ai Prompt to FitNesse** (text-area toolbar, between *FitNesse to Spreadsheet*
+   and *Format*)
    opens a two-panel modal: describe the page you want on the left, press
    **Send**, and the generated wiki text appears on the right. The right panel is
    editable; every further **Send** re-sends it, so the LLM refines your hand
@@ -126,9 +127,11 @@ No automated JS tests in this project. After `mvn package` + installation:
 - [ ] With `llm.debug=true`: the FitNesse console shows `[ai-verify]` INFO lines
       (POST payload, LLM response, prompt source, diff summary). With the property
       absent or `false`, only warnings appear.
-- [ ] The **Ai Prompt to FitNesse** button sits at the end of the text-area
-      toolbar on every edit form (plain-text mode) and the modal opens with the
-      current page content already in the right panel.
+- [ ] The **Ai Prompt** button (blue, star icon, same styling as *Verify with AI*)
+      sits between *FitNesse to Spreadsheet* and *Format* in the text-area toolbar
+      on every edit form (plain-text mode); its tooltip shows "Ai Prompt to
+      FitNesse: prompt an AI to generate FitNesse wiki content." and the modal
+      opens with the current page content already in the right panel.
 - [ ] Type a request → **Send**: a user bubble appears, then an assistant bubble
       and the right panel fills with the reply. Send is disabled while empty.
 - [ ] Edit the right panel by hand, send a second request → the edited content is
