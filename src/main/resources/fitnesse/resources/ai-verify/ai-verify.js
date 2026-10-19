@@ -315,7 +315,7 @@
       hunk = hunks[i];
       start = hunk.startLine - 1;
       while (cursor < start && cursor < origLines.length) {
-        rows.push({ origNo: cursor + 1, origText: origLines[cursor], corrNo: cursor + 1, corrText: origLines[cursor], hunkId: null });
+        rows.push({ origNo: cursor + 1, origText: origLines[cursor], corrText: origLines[cursor], hunkId: null });
         cursor++;
       }
       oLines = hunk.originalLines;
@@ -335,7 +335,7 @@
       cursor = start + oLines.length;
     }
     while (cursor < origLines.length) {
-      rows.push({ origNo: cursor + 1, origText: origLines[cursor], corrNo: cursor + 1, corrText: origLines[cursor], hunkId: null });
+      rows.push({ origNo: cursor + 1, origText: origLines[cursor], corrText: origLines[cursor], hunkId: null });
       cursor++;
     }
     var corrNo = 0;
@@ -381,7 +381,7 @@
           var r = rows[k];
           var selCell = (k === start)
             ? '<td class="ai-verify-gutter-sel" rowspan="' + count + '">'
-              + '<input type="checkbox" class="ai-verify-hunk-check" data-hunk-id="' + hunkId + '" checked /></td>'
+              + '<input type="checkbox" class="ai-verify-hunk-check" data-hunk-id="' + hunkId + '" aria-label="Correction ' + (hunkId + 1) + '" checked /></td>'
             : '';
           var leftClass = r.type === 'added' ? '' : ' ai-verify-side-removed';
           var rightClass = r.type === 'removed' ? '' : ' ai-verify-side-added';

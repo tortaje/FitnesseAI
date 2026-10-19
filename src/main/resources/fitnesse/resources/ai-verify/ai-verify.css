@@ -85,7 +85,6 @@
 .ai-verify-diff {
   overflow: auto;
   max-height: 62vh;
-  border: 1px solid #ddd;
 }
 
 .ai-verify-table {
@@ -115,7 +114,8 @@
 .ai-verify-gutter-sel {
   width: 30px;
   text-align: center;
-  padding: 0 0.2em;
+  padding: 0.3em 0.2em 0;
+  vertical-align: top;
 }
 
 .ai-verify-gutter {
@@ -154,6 +154,35 @@
   background: #f2f2f2;
   text-decoration: line-through;
   color: #aaa;
+}
+
+.ai-verify-row-unchanged td.ai-verify-text {
+  color: #666;
+}
+
+.ai-verify-text[title] {
+  position: relative;
+  cursor: help;
+}
+
+.ai-verify-text[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 10;
+  background: #333;
+  color: #fff;
+  padding: 0.4em 0.6em;
+  border-radius: 3px;
+  white-space: pre-wrap;
+  max-width: 40em;
+  width: max-content;
+  font-family: sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .ai-verify-message {
