@@ -6,10 +6,17 @@ import fitnesse.authentication.SecureReadOperation;
 import fitnesse.authentication.SecureResponder;
 import fitnesse.http.Request;
 import fitnesse.http.Response;
+import fitnesse.wiki.PageType;
+import fitnesse.wiki.PathParser;
+import fitnesse.wiki.WikiPage;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public class AiPromptResponder implements SecureResponder {
+  private static final Logger LOG = Logger.getLogger(AiPromptResponder.class.getName());
 
   @Override
   public Response makeResponse(FitNesseContext context, Request request) throws Exception {
@@ -23,12 +30,12 @@ public class AiPromptResponder implements SecureResponder {
         "Request body must be form-encoded: responder=ai-prompt&payload=<urlencoded JSON "
           + "{pageName, pageType, pageContent, messages}>"));
     }
-    if (!payload.has("pageContent") || !(payload.get("pageContent") instanceof String)) {
+    if (!payload.has("pageContent") || !(payload.get("pageContent") instanceof String pageContent)) {
       return ResponderSupport.jsonResponse(400,
         new JSONObject().put("error", "Missing required field: pageContent"));
     }
-    if (!payload.has("messages") || !(payload.get("messages") instanceof JSONArray messages)
-        || messages.length() == 0) {
+    if (!payload.has("messages") || !(payload.get("messages") instanceof JSONArray transcript)
+        || transcript.length() == 0) {
       return ResponderSupport.jsonResponse(400,
         new JSONObject().put("error", "Missing required field: messages"));
     }
@@ -41,8 +48,40 @@ public class AiPromptResponder implements SecureResponder {
         .put("missing", new JSONArray(config.missingRequired())));
     }
 
-    return ResponderSupport.jsonResponse(501,
-      new JSONObject().put("error", "Not implemented yet"));
+    String pageName = payload.optString("pageName", "");
+    String pageType = payload.optString("pageType", "");
+    if (pageType.isBlank()) {
+      pageType = resolvePageType(context, pageName);
+    }
+    String resolvedPageType = pageType;
+    JSONArray messages = buildMessages(config.generateSystemPrompt(), pageName, resolvedPageType,
+      pageContent, transcript);
+
+    Level verbose = config.debug() ? Level.INFO : Level.FINE;
+    LOG.log(verbose, () -> "[ai-prompt] generate requested messages=" + transcript.length()
+      + " pageType=" + resolvedPageType + " pageContentLength=" + pageContent.length());
+    String content;
+    try {
+      content = new LlmClient().generate(config, messages);
+    } catch (LlmException e) {
+      return ResponderSupport.jsonResponse(502, ResponderSupport.llmError(LOG, "[ai-prompt]", e));
+    } catch (RuntimeException e) {
+      return ResponderSupport.jsonResponse(502, ResponderSupport.runtimeError(LOG, "[ai-prompt]", e));
+    }
+    LOG.log(verbose, () -> "[ai-prompt] generated contentLength=" + content.length());
+    return ResponderSupport.jsonResponse(200, new JSONObject().put("content", content));
+  }
+
+  private static String resolvePageType(FitNesseContext context, String pageName) {
+    if (pageName == null || pageName.isBlank()) {
+      return "";
+    }
+    try {
+      WikiPage page = context.getRootPage().getPageCrawler().getPage(PathParser.parse(pageName));
+      return page == null ? "" : PageType.fromWikiPage(page).toString();
+    } catch (RuntimeException e) {
+      return "";
+    }
   }
 
   static JSONArray buildMessages(String systemPrompt, String pageName, String pageType,

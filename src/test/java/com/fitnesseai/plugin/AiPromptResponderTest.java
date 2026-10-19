@@ -1,20 +1,26 @@
 package com.fitnesseai.plugin;
 
+import com.sun.net.httpserver.HttpServer;
 import fitnesse.FitNesseContext;
 import fitnesse.Responder;
 import fitnesse.http.MockRequest;
 import fitnesse.http.Response;
 import fitnesse.http.SimpleResponse;
 import fitnesse.testutil.FitNesseUtil;
+import fitnesse.wiki.PathParser;
+import fitnesse.wiki.WikiPageUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,13 +28,44 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AiPromptResponderTest {
 
   private FitNesseContext context;
+  private HttpServer llmServer;
+  private String lastRequestBody;
 
   @AfterEach
   void tearDown() throws IOException {
+    if (llmServer != null) {
+      llmServer.stop(0);
+      llmServer = null;
+    }
     if (context != null) {
       FitNesseUtil.destroyTestContext(context);
       context = null;
     }
+  }
+
+  private String startMockLlm(String generatedContent) throws IOException {
+    llmServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    String llmJson = new JSONObject()
+      .put("choices", new JSONArray().put(new JSONObject()
+        .put("message", new JSONObject().put("content", generatedContent))))
+      .toString();
+    llmServer.createContext("/v1/chat/completions", exchange -> {
+      lastRequestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+      byte[] bytes = llmJson.getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(200, bytes.length);
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(bytes);
+      }
+    });
+    llmServer.start();
+    return "http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1";
+  }
+
+  private Properties llmProps(String baseUrl) {
+    Properties props = new Properties();
+    props.setProperty("llm.base.url", baseUrl);
+    props.setProperty("llm.model", "test-model");
+    return props;
   }
 
   private static MockRequest promptRequest(JSONObject payload) {
@@ -173,5 +210,90 @@ class AiPromptResponderTest {
     assertEquals(3, out.length());
     assertTrue(out.getJSONObject(1).getString("content").contains("Current page content"));
     assertEquals("hello", out.getJSONObject(2).getString("content"));
+  }
+
+  @Test
+  void generateReturnsContentForValidPayload() throws Exception {
+    context = FitNesseUtil.makeTestContext(llmProps(startMockLlm("!1 Generated test")));
+
+    JSONObject body = dispatch(promptRequest(validPayload()));
+
+    assertEquals(200, lastStatus);
+    assertEquals("!1 Generated test", body.getString("content"));
+  }
+
+  @Test
+  void clientPageTypeIsUsedWhenProvided() throws Exception {
+    context = FitNesseUtil.makeTestContext(llmProps(startMockLlm("x")));
+    JSONObject payload = validPayload().put("pageType", "Suite");
+
+    dispatch(promptRequest(payload));
+
+    assertTrue(lastRequestBody.contains("Page type: Suite"));
+    assertTrue(lastRequestBody.contains("Page name: SomePage"));
+  }
+
+  @Test
+  void serverResolvesPageTypeWhenClientSendsNone() throws Exception {
+    context = FitNesseUtil.makeTestContext(llmProps(startMockLlm("x")));
+    WikiPageUtil.addPage(context.getRootPage(), PathParser.parse("LoginTest"), "!define TEST_RUNNER slim");
+    JSONObject payload = validPayload().put("pageName", "LoginTest").put("pageType", "");
+
+    dispatch(promptRequest(payload));
+
+    assertTrue(lastRequestBody.contains("Page type: Test"), lastRequestBody);
+  }
+
+  @Test
+  void llmFailureReturns502WithErrorAndDetails() throws Exception {
+    llmServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    llmServer.createContext("/v1/chat/completions", exchange -> {
+      byte[] bytes = "provider exploded".getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(500, bytes.length);
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(bytes);
+      }
+    });
+    llmServer.start();
+    context = FitNesseUtil.makeTestContext(llmProps("http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1"));
+
+    JSONObject body = dispatch(promptRequest(validPayload()));
+
+    assertEquals(502, lastStatus);
+    assertTrue(body.getString("error").contains("HTTP 500"));
+    assertEquals("provider exploded", body.getString("details"));
+  }
+
+  @Test
+  void debugLogsGenerateRequest() throws Exception {
+    Properties props = llmProps(startMockLlm("!1 x"));
+    props.setProperty("llm.debug", "true");
+    context = FitNesseUtil.makeTestContext(props);
+
+    try (LogCapture logs = new LogCapture(AiPromptResponder.class)) {
+      dispatch(promptRequest(validPayload()));
+      assertTrue(logs.has(Level.INFO, "generate requested"));
+      assertTrue(logs.has(Level.INFO, "generated contentLength"));
+    }
+  }
+
+  @Test
+  void llmErrorsAreLoggedAsWarnings() throws Exception {
+    llmServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    llmServer.createContext("/v1/chat/completions", exchange -> {
+      byte[] bytes = "provider exploded".getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(500, bytes.length);
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(bytes);
+      }
+    });
+    llmServer.start();
+    context = FitNesseUtil.makeTestContext(llmProps("http://127.0.0.1:" + llmServer.getAddress().getPort() + "/v1"));
+
+    try (LogCapture logs = new LogCapture(AiPromptResponder.class)) {
+      dispatch(promptRequest(validPayload()));
+      assertEquals(502, lastStatus);
+      assertTrue(logs.has(Level.WARNING, "LLM error"));
+    }
   }
 }
