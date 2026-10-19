@@ -3,6 +3,10 @@
 Date: 2026-10-19
 Status: approved in brainstorming, awaiting spec review
 
+Button placement and styling described here are superseded by
+`2026-10-19-ai-prompt-toolbar-button-design.md` (button now sits between *FitNesse
+to Spreadsheet* and *Format*, styled like *Verify with AI*).
+
 ## Goal
 
 Add an **Ai Prompt to FitNesse** button to the FitNesse plain-text editor toolbar
