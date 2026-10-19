@@ -50,6 +50,8 @@ textarea (manual save as usual afterwards).
    | `llm.timeout.seconds`| no       | 120      | HTTP timeout                                                                   |
    | `llm.prompt`         | no       | bundled  | Inline text replacing the default system prompt                                |
    | `llm.prompt.file`    | no       | —        | Path to a UTF-8 file (`.md` recommended) holding the system prompt; re-read on every verification, takes precedence over `llm.prompt` |
+   | `llm.generate.prompt`     | no       | bundled  | Inline text replacing the generation system prompt (Ai Prompt to FitNesse) |
+   | `llm.generate.prompt.file`| no       | —        | Path to a UTF-8 file holding the generation system prompt; re-read on every send, takes precedence over `llm.generate.prompt` |
    | `llm.debug`          | no       | `false`  | When `true`, logs the full LLM request/response payloads, the prompt source, the verify summary and diff internals at INFO level; when `false` these go to FINE (hidden by default). LLM errors are always logged as warnings |
 
 4. Restart FitNesse (once: the `llm.*` properties are read at startup). After that,
@@ -80,6 +82,12 @@ ServiceLoader (META-INF/services inside the JAR).
    manual (Save button).
 5. If the textarea changed between verification and Apply, applying is refused
    (re-run the verification).
+6. **Ai Prompt to FitNesse** (text-area toolbar, next to *Spreadsheet to FitNesse*)
+   opens a two-panel modal: describe the page you want on the left, press
+   **Send**, and the generated wiki text appears on the right. The right panel is
+   editable; every further **Send** re-sends it, so the LLM refines your hand
+   edits. **Save** closes the modal and replaces the whole editor content — the
+   page is still saved manually with the Save button.
 
 ## Limitations
 
@@ -118,3 +126,17 @@ No automated JS tests in this project. After `mvn package` + installation:
 - [ ] With `llm.debug=true`: the FitNesse console shows `[ai-verify]` INFO lines
       (POST payload, LLM response, prompt source, diff summary). With the property
       absent or `false`, only warnings appear.
+- [ ] The **Ai Prompt to FitNesse** button sits at the end of the text-area
+      toolbar on every edit form (plain-text mode) and the modal opens with the
+      current page content already in the right panel.
+- [ ] Type a request → **Send**: a user bubble appears, then an assistant bubble
+      and the right panel fills with the reply. Send is disabled while empty.
+- [ ] Edit the right panel by hand, send a second request → the edited content is
+      sent along with it (check the Network tab payload).
+- [ ] **Save** closes the modal and replaces the editor content; the WYSIWYG view
+      matches after switching modes.
+- [ ] Bad `llm.base.url` → error banner + **Retry**; a warning line appears in the
+      FitNesse console tagged `[ai-prompt]`.
+- [ ] With `llm.debug=true`: `[ai-prompt]` INFO lines (generate request, LLM
+      response, prompt source) are visible; with the property absent, only
+      warnings appear.
