@@ -86,6 +86,24 @@ Other:
 - !lastmodified / !today
 - !help
 
+
+WORKED EXAMPLE (study this to get line numbers right):
+Input page (5 lines):
+  1: !define x {10
+  2: Hello world
+  3:
+  4: !define y {20
+  5: Bye
+Corrected page (5 lines, fixed the two unclosed defines):
+  1: !define x {10}
+  2: Hello world
+  3:
+  4: !define y {20}
+  5: Bye
+Correct JSON:
+{"corrected": "!define x {10}\nHello world\n\n!define y {20}\nBye", "comments": [{"line": 1, "explanation": "Closed the unclosed !define for x."}, {"line": 4, "explanation": "Closed the unclosed !define for y."}]}
+Note: line numbers count every line including blanks, in the CORRECTED output. Only report a comment for a line you actually changed.
+
 OUTPUT FORMAT (strict):
 Respond with ONLY a JSON object. No markdown fences, no commentary, no text before or after.
 Shape:
