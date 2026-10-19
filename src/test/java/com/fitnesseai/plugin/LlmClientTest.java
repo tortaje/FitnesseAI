@@ -12,8 +12,10 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -178,5 +180,27 @@ class LlmClientTest {
     LlmException e = assertThrows(LlmException.class, () -> new LlmClient().chat(impatient, "page"));
 
     assertTrue(e.getMessage().contains("timed out"));
+  }
+
+  @Test
+  void requestAndResponseDumpsFollowDebugFlag() throws Exception {
+    respondWithBody = llmReply(new JSONObject().put("corrected", "x").toString());
+
+    try (LogCapture logs = new LogCapture(LlmClient.class)) {
+      new LlmClient().chat(configWith("llm.debug", "true"), "page");
+      assertTrue(logs.has(Level.INFO, "[ai-verify] POST"));
+      assertTrue(logs.has(Level.INFO, "[ai-verify] LLM response HTTP 200"));
+      assertTrue(logs.has(Level.INFO, "[ai-verify] LLM content="));
+    }
+
+    try (LogCapture logs = new LogCapture(LlmClient.class)) {
+      new LlmClient().chat(config(), "page");
+      assertFalse(logs.has(Level.INFO, "[ai-verify] POST"));
+      assertFalse(logs.has(Level.INFO, "[ai-verify] LLM response HTTP 200"));
+      assertFalse(logs.has(Level.INFO, "[ai-verify] LLM content="));
+      assertTrue(logs.has(Level.FINE, "[ai-verify] POST"));
+      assertTrue(logs.has(Level.FINE, "[ai-verify] LLM response HTTP 200"));
+      assertTrue(logs.has(Level.FINE, "[ai-verify] LLM content="));
+    }
   }
 }

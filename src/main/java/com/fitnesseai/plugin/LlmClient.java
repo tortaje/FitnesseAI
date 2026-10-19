@@ -12,6 +12,7 @@ import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class LlmClient {
@@ -41,7 +42,8 @@ public class LlmClient {
 
     String requestBody = body.toString();
     String url = config.baseUrl() + "/chat/completions";
-    LOG.info(() -> "[ai-verify] POST " + url + " model=" + config.model()
+    Level verbose = config.debug() ? Level.INFO : Level.FINE;
+    LOG.log(verbose, () -> "[ai-verify] POST " + url + " model=" + config.model()
       + " request=" + truncate(requestBody));
 
     HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -65,7 +67,7 @@ public class LlmClient {
       throw new LlmException("Could not reach LLM at " + config.baseUrl() + ": " + e.getMessage());
     }
 
-    LOG.info(() -> "[ai-verify] LLM response HTTP " + response.statusCode()
+    LOG.log(verbose, () -> "[ai-verify] LLM response HTTP " + response.statusCode()
       + " body=" + truncate(response.body()));
 
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -73,8 +75,8 @@ public class LlmClient {
     }
 
     String content = extractContent(response.body());
-    LOG.info(() -> "[ai-verify] LLM content=" + truncate(content));
-    return parseResult(stripMarkdownFences(content));
+    LOG.log(verbose, () -> "[ai-verify] LLM content=" + truncate(content));
+    return parseResult(stripMarkdownFences(content), verbose);
   }
 
   static String extractContent(String responseBody) throws LlmException {
@@ -106,12 +108,12 @@ public class LlmClient {
     return trimmed.strip();
   }
 
-  static Result parseResult(String json) throws LlmException {
-    JSONObject obj = tryParse(json);
+  static Result parseResult(String json, Level verbose) throws LlmException {
+    JSONObject obj = tryParse(json, verbose);
     if (obj == null) {
       // Small local models over-escape quotes with 2+ backslashes (\\" and \\\").
-      LOG.info("[ai-verify] Strict JSON parse failed, retrying with over-escaped quotes repaired");
-      obj = tryParse(json.replaceAll("\\\\{2,}\"", "\\\\\\\""));
+      LOG.log(verbose, "[ai-verify] Strict JSON parse failed, retrying with over-escaped quotes repaired");
+      obj = tryParse(json.replaceAll("\\\\{2,}\"", "\\\\\\\""), verbose);
     }
     if (obj == null) {
       throw new LlmException("LLM did not return valid JSON", truncate(json));
@@ -130,11 +132,11 @@ public class LlmClient {
     return new Result(obj.getString("corrected"), comments, json);
   }
 
-  private static JSONObject tryParse(String json) {
+  private static JSONObject tryParse(String json, Level verbose) {
     try {
       return new JSONObject(json);
     } catch (RuntimeException e) {
-      LOG.info(() -> "[ai-verify] JSON parse failed: " + e.getMessage());
+      LOG.log(verbose, () -> "[ai-verify] JSON parse failed: " + e.getMessage());
       return null;
     }
   }
