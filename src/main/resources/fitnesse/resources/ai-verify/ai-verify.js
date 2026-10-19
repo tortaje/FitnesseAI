@@ -1,4 +1,4 @@
-/* FitNesse AI Verify — button + diff modal for the wiki edit page. */
+/* FitNesse AI Verify — button + diff modal for the wiki edit and new-page forms. */
 (function () {
   'use strict';
 
@@ -47,6 +47,11 @@
   }
 
   function currentPageName() {
+    // New-page form: the user types the page name there.
+    var field = document.querySelector('form input[name="pageName"]');
+    if (field && field.value && field.value.trim()) {
+      return field.value.trim();
+    }
     var path = window.location.pathname;
     var root = state.contextRoot.replace(/\/$/, '');
     var name = path;
@@ -510,8 +515,9 @@
     if (!document.getElementById('pageContent')) {
       return;
     }
-    // Only on edit pages of existing pages (Wysiwyg sets responder=saveData).
-    if (!document.querySelector('form input[name="responder"][value="saveData"]')) {
+    // Only on edit forms: existing pages (Wysiwyg sets responder=saveData)
+    // and new-page forms (responder=addChild).
+    if (!document.querySelector('form input[name="responder"][value="saveData"], form input[name="responder"][value="addChild"]')) {
       return;
     }
     var saveButtons = document.getElementById('save_buttons');
