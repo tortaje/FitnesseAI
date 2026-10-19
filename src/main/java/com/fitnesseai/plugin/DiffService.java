@@ -57,54 +57,32 @@ public class DiffService {
     for (int i = 0; i < geometries.size(); i++) {
       hunkComments.add(new ArrayList<>());
     }
-    if (comments != null) {
-      List<LlmClient.Comment> remaining = new ArrayList<>(comments);
-      // First: exact range matches (corrected space, then original space for deletions).
-      for (LlmClient.Comment comment : new ArrayList<>(remaining)) {
-        if (comment.line() <= 0) {
-          remaining.remove(comment);
-          continue;
-        }
-        int bestIndex = -1;
-        int bestDistance = Integer.MAX_VALUE;
-        for (int i = 0; i < geometries.size(); i++) {
-          Geometry g = geometries.get(i);
-          boolean exact = (g.correctedCount() > 0
-            && comment.line() >= g.correctedStart()
-            && comment.line() < g.correctedStart() + g.correctedCount())
-            || (g.correctedCount() == 0
-            && comment.line() >= g.startLine()
-            && comment.line() < g.startLine() + Math.max(1, g.originalLines().size()));
-          if (exact) {
-            bestIndex = i;
-            bestDistance = 0;
-            break;
-          }
-        }
-        if (bestIndex >= 0) {
-          hunkComments.get(bestIndex).add(comment.explanation());
-          remaining.remove(comment);
-        }
-      }
-      // Fallback: nearest hunk within tolerance for leftover comments.
-      for (LlmClient.Comment comment : remaining) {
+    if (comments != null && !geometries.isEmpty()) {
+      // Sort comments by line number so assignment is monotonic in document order,
+      // which prevents one early hunk from absorbing comments meant for later hunks.
+      List<LlmClient.Comment> sorted = new ArrayList<>(comments);
+      sorted.sort(Comparator.comparingInt(LlmClient.Comment::line));
+
+      int hi = 0;
+      for (LlmClient.Comment comment : sorted) {
         if (comment.line() <= 0) {
           continue;
         }
-        int bestIndex = -1;
-        int bestDistance = COMMENT_TOLERANCE + 1;
-        for (int i = 0; i < geometries.size(); i++) {
-          Geometry g = geometries.get(i);
-          int distance = Math.min(
-            Math.abs(comment.line() - g.correctedStart()),
-            Math.abs(comment.line() - g.startLine()));
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = i;
+        // Advance the hunk pointer to the hunk nearest to this comment, never backwards.
+        int bestIndex = hi;
+        int bestDistance = Math.min(Math.abs(comment.line() - geometries.get(hi).correctedStart()),
+            Math.abs(comment.line() - geometries.get(hi).startLine()));
+        for (int j = hi + 1; j < geometries.size(); j++) {
+          int d = Math.min(Math.abs(comment.line() - geometries.get(j).correctedStart()),
+              Math.abs(comment.line() - geometries.get(j).startLine()));
+          if (d < bestDistance) {
+            bestDistance = d;
+            bestIndex = j;
           }
         }
-        if (bestIndex >= 0 && bestDistance <= COMMENT_TOLERANCE) {
+        if (bestDistance <= COMMENT_TOLERANCE) {
           hunkComments.get(bestIndex).add(comment.explanation());
+          hi = bestIndex;
         }
       }
     }
