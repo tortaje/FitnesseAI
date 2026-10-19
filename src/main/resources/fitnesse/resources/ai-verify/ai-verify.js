@@ -387,22 +387,32 @@
     var diff = state.modal.querySelector('.ai-verify-diff');
     diff.hidden = false;
 
-    var html = ['<table class="ai-verify-table">',
-      '<thead><tr><th class="ai-verify-gutter-sel"></th><th class="ai-verify-gutter">#</th>'
+    var fragment = document.createDocumentFragment();
+    var table = document.createElement('table');
+    table.className = 'ai-verify-table';
+    fragment.appendChild(table);
+
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th class="ai-verify-gutter-sel"></th><th class="ai-verify-gutter">#</th>'
       + '<th class="ai-verify-text">Original</th><th class="ai-verify-gutter">#</th>'
-      + '<th class="ai-verify-text">Corrected</th></tr></thead>',
-      '<tbody>'];
+      + '<th class="ai-verify-text">Corrected</th></tr>';
+    table.appendChild(thead);
+
+    var tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+
     var i = 0;
     while (i < rows.length) {
       var row = rows[i];
       if (row.hunkId === null) {
-        html.push('<tr class="ai-verify-row-unchanged">'
-          + '<td class="ai-verify-gutter-sel"></td>'
+        var tr = document.createElement('tr');
+        tr.className = 'ai-verify-row-unchanged';
+        tr.innerHTML = '<td class="ai-verify-gutter-sel"></td>'
           + gutter(row.origNo)
           + '<td class="ai-verify-text">' + escapeHtml(row.origText) + '</td>'
           + gutter(row.corrNo)
-          + '<td class="ai-verify-text">' + escapeHtml(row.corrText) + '</td>'
-          + '</tr>');
+          + '<td class="ai-verify-text">' + escapeHtml(row.corrText) + '</td>';
+        tbody.appendChild(tr);
         i++;
       } else {
         var hunkId = row.hunkId;
@@ -413,27 +423,29 @@
         var count = i - start;
         for (var k = start; k < i; k++) {
           var r = rows[k];
+          var tr = document.createElement('tr');
+          tr.className = 'ai-verify-row-modified';
+          tr.setAttribute('data-hunk-id', hunkId);
           var selCell = (k === start)
             ? '<td class="ai-verify-gutter-sel" rowspan="' + count + '">'
               + '<input type="checkbox" class="ai-verify-hunk-check" data-hunk-id="' + hunkId + '" aria-label="Correction ' + (hunkId + 1) + '" checked /></td>'
             : '';
           var leftClass = r.type === 'added' ? '' : ' ai-verify-side-removed';
           var rightClass = r.type === 'removed' ? '' : ' ai-verify-side-added';
-          var title = r.comment ? ' title="' + escapeHtml(r.comment).replace(/"/g, '&quot;') + '"' : '';
-          html.push('<tr class="ai-verify-row-modified" data-hunk-id="' + hunkId + '">'
-            + selCell
+          var title = r.comment ? ' title="' + escapeHtml(r.comment).replace(/"/g, '"') + '"' : '';
+          tr.innerHTML = selCell
             + gutter(r.origNo)
             + '<td class="ai-verify-text' + leftClass + '"' + (r.origText !== null ? title : '') + '>'
             + (r.origText !== null ? escapeHtml(r.origText) : '') + '</td>'
             + gutter(r.corrNo)
             + '<td class="ai-verify-text' + rightClass + '"' + (r.corrText !== null ? title : '') + '>'
-            + (r.corrText !== null ? escapeHtml(r.corrText) : '') + '</td>'
-            + '</tr>');
+            + (r.corrText !== null ? escapeHtml(r.corrText) : '') + '</td>';
+          tbody.appendChild(tr);
         }
       }
     }
-    html.push('</tbody></table>');
-    diff.innerHTML = html.join('');
+    diff.innerHTML = '';
+    diff.appendChild(fragment);
 
     var checks = diff.querySelectorAll('.ai-verify-hunk-check');
     for (var c = 0; c < checks.length; c++) {
