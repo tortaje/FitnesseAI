@@ -12,11 +12,14 @@ import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class LlmClient {
   private static final Logger LOG = Logger.getLogger(LlmClient.class.getName());
+  private static HttpClient sharedHttpClient;
+  private static AiVerifyConfig sharedConfig;
 
   public record Comment(int line, String explanation) {}
   public record Result(String corrected, List<Comment> comments, String rawContent) {}
@@ -24,11 +27,52 @@ public class LlmClient {
   private final HttpClient httpClient;
 
   public LlmClient() {
-    this(HttpClient.newHttpClient());
+    this(getOrCreateSharedHttpClient());
   }
 
   LlmClient(HttpClient httpClient) {
     this.httpClient = httpClient;
+  }
+
+  public static void setSharedHttpClient(HttpClient client) {
+    sharedHttpClient = client;
+  }
+
+  public static void setSharedConfig(AiVerifyConfig config) {
+    sharedConfig = config;
+    // Reset shared client so it's recreated with new config
+    sharedHttpClient = null;
+  }
+
+  private static HttpClient getOrCreateSharedHttpClient() {
+    if (sharedHttpClient != null) {
+      return sharedHttpClient;
+    }
+    synchronized (LlmClient.class) {
+      if (sharedHttpClient != null) {
+        return sharedHttpClient;
+      }
+      // Use shared config if available, otherwise create default
+      AiVerifyConfig config = sharedConfig;
+      if (config == null) {
+        // Fallback: create config from system properties for lazy init
+        config = new AiVerifyConfig(System.getProperties());
+      }
+      sharedHttpClient = createSharedHttpClient(config);
+      return sharedHttpClient;
+    }
+  }
+
+  private static HttpClient createDefaultClient() {
+    return HttpClient.newHttpClient();
+  }
+
+  static HttpClient createSharedHttpClient(AiVerifyConfig config) {
+    return HttpClient.newBuilder()
+        .executor(Executors.newFixedThreadPool(config.httpMaxConnections()))
+        .connectTimeout(Duration.ofSeconds(config.timeoutSeconds()))
+        .version(HttpClient.Version.HTTP_2)
+        .build();
   }
 
   public Result chat(AiVerifyConfig config, String pageContent) throws LlmException {
