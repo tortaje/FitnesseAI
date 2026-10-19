@@ -203,4 +203,32 @@ class LlmClientTest {
       assertTrue(logs.has(Level.FINE, "[ai-verify] LLM content="));
     }
   }
+
+  @Test
+  void generateSendsMessagesAndReturnsPlainWikiText() throws Exception {
+    respondWithBody = llmReply("```wikitext\n!1 Login test\n|user|\n|----|\n```");
+    JSONArray messages = new JSONArray()
+      .put(new JSONObject().put("role", "system").put("content", "GENERATION"))
+      .put(new JSONObject().put("role", "user").put("content", "make a test"));
+
+    String content = new LlmClient().generate(config(), messages);
+
+    assertEquals("!1 Login test\n|user|\n|----|", content);
+    JSONObject body = new JSONObject(lastRequestBody);
+    assertEquals(2, body.getJSONArray("messages").length());
+    assertEquals("GENERATION", body.getJSONArray("messages").getJSONObject(0).getString("content"));
+    assertEquals("make a test", body.getJSONArray("messages").getJSONObject(1).getString("content"));
+    assertEquals("test-model", body.getString("model"));
+    assertEquals("Bearer sk-test", lastAuthorization);
+  }
+
+  @Test
+  void generateDoesNotJsonParseTheContent() throws Exception {
+    respondWithBody = llmReply("not json at all {broken");
+
+    String content = new LlmClient().generate(config(), new JSONArray()
+      .put(new JSONObject().put("role", "user").put("content", "x")));
+
+    assertEquals("not json at all {broken", content);
+  }
 }

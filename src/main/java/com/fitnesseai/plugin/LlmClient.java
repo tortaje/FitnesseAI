@@ -32,18 +32,28 @@ public class LlmClient {
   }
 
   public Result chat(AiVerifyConfig config, String pageContent) throws LlmException {
+    JSONArray messages = new JSONArray()
+      .put(new JSONObject().put("role", "system").put("content", config.systemPrompt()))
+      .put(new JSONObject().put("role", "user").put("content", pageContent));
+    String content = post(config, messages, "[ai-verify]");
+    return parseResult(stripMarkdownFences(content), verboseLevel(config));
+  }
+
+  public String generate(AiVerifyConfig config, JSONArray messages) throws LlmException {
+    return stripMarkdownFences(post(config, messages, "[ai-prompt]"));
+  }
+
+  String post(AiVerifyConfig config, JSONArray messages, String tag) throws LlmException {
     JSONObject body = new JSONObject()
       .put("model", config.model())
       .put("temperature", 0)
       .put("max_tokens", config.maxTokens())
-      .put("messages", new JSONArray()
-        .put(new JSONObject().put("role", "system").put("content", config.systemPrompt()))
-        .put(new JSONObject().put("role", "user").put("content", pageContent)));
+      .put("messages", messages);
 
     String requestBody = body.toString();
     String url = config.baseUrl() + "/chat/completions";
-    Level verbose = config.debug() ? Level.INFO : Level.FINE;
-    LOG.log(verbose, () -> "[ai-verify] POST " + url + " model=" + config.model()
+    Level verbose = verboseLevel(config);
+    LOG.log(verbose, () -> tag + " POST " + url + " model=" + config.model()
       + " request=" + truncate(requestBody));
 
     HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -67,7 +77,7 @@ public class LlmClient {
       throw new LlmException("Could not reach LLM at " + config.baseUrl() + ": " + e.getMessage());
     }
 
-    LOG.log(verbose, () -> "[ai-verify] LLM response HTTP " + response.statusCode()
+    LOG.log(verbose, () -> tag + " LLM response HTTP " + response.statusCode()
       + " body=" + truncate(response.body()));
 
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -75,8 +85,12 @@ public class LlmClient {
     }
 
     String content = extractContent(response.body());
-    LOG.log(verbose, () -> "[ai-verify] LLM content=" + truncate(content));
-    return parseResult(stripMarkdownFences(content), verbose);
+    LOG.log(verbose, () -> tag + " LLM content=" + truncate(content));
+    return content;
+  }
+
+  private static Level verboseLevel(AiVerifyConfig config) {
+    return config.debug() ? Level.INFO : Level.FINE;
   }
 
   static String extractContent(String responseBody) throws LlmException {
