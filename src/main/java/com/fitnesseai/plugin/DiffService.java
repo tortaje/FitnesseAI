@@ -58,8 +58,7 @@ public class DiffService {
       hunkComments.add(new ArrayList<>());
     }
     if (comments != null && !geometries.isEmpty()) {
-      // Sort comments by line number so assignment is monotonic in document order,
-      // which prevents one early hunk from absorbing comments meant for later hunks.
+      // Sort comments by line number so assignment follows document order.
       List<LlmClient.Comment> sorted = new ArrayList<>(comments);
       sorted.sort(Comparator.comparingInt(LlmClient.Comment::line));
 
@@ -68,21 +67,32 @@ public class DiffService {
         if (comment.line() <= 0) {
           continue;
         }
-        // Advance the hunk pointer to the hunk nearest to this comment, never backwards.
+        // Advance pointer past hunks that are clearly before this comment.
+        while (hi + 1 < geometries.size()
+            && geometries.get(hi + 1).correctedStart() <= comment.line()) {
+          hi++;
+        }
+        // Pick the closer of the current and next hunk, if within tolerance.
         int bestIndex = hi;
-        int bestDistance = Math.min(Math.abs(comment.line() - geometries.get(hi).correctedStart()),
+        int bestDistance = Math.min(
+            Math.abs(comment.line() - geometries.get(hi).correctedStart()),
             Math.abs(comment.line() - geometries.get(hi).startLine()));
-        for (int j = hi + 1; j < geometries.size(); j++) {
-          int d = Math.min(Math.abs(comment.line() - geometries.get(j).correctedStart()),
-              Math.abs(comment.line() - geometries.get(j).startLine()));
-          if (d < bestDistance) {
-            bestDistance = d;
-            bestIndex = j;
+        if (hi + 1 < geometries.size()) {
+          int nextDistance = Math.min(
+              Math.abs(comment.line() - geometries.get(hi + 1).correctedStart()),
+              Math.abs(comment.line() - geometries.get(hi + 1).startLine()));
+          if (nextDistance < bestDistance) {
+            bestDistance = nextDistance;
+            bestIndex = hi + 1;
           }
         }
         if (bestDistance <= COMMENT_TOLERANCE) {
           hunkComments.get(bestIndex).add(comment.explanation());
           hi = bestIndex;
+          // Advance so the next comment prefers subsequent hunks.
+          if (hi + 1 < geometries.size()) {
+            hi++;
+          }
         }
       }
     }
