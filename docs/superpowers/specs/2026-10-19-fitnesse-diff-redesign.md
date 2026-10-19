@@ -40,7 +40,7 @@ corrected gutter shows the corrected 1-based line number (or blank).
 
 - `renderDiff(originalText, hunks)`: builds the aligned row model and renders the
   table. Replaces the current hunk-loop renderer.
-- `alignLines(originalText, hunks)`: returns an array of row objects
+- `alignRows(originalText, hunks)`: returns an array of row objects
   `{origNo, origText, corrNo, corrText, hunkId, type, comment}` where hunkId is
   null for unchanged rows.
 - Checkbox handling: one checkbox per hunk, placed in the rowspan cell of the
@@ -52,7 +52,7 @@ corrected gutter shows the corrected 1-based line number (or blank).
 
 1. Server returns hunks with startLine (original 1-based), originalLines,
    correctedLines, comment.
-2. `alignLines` walks the original lines and the hunks in order, emitting rows.
+2. `alignRows` walks the original lines and the hunks in order, emitting rows.
    Unchanged runs between hunks become neutral rows. Each hunk emits
    `max(originalLines.length, correctedLines.length)` rows, aligning by index,
    padding blanks.

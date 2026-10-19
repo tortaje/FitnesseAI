@@ -17,7 +17,7 @@
 **Files:**
 - Modify: `src/main/resources/fitnesse/resources/ai-verify/ai-verify.js`
 
-- [ ] **Step 1: Remove now-dead helpers and constant**
+- [x] **Step 1: Remove now-dead helpers and constant**
 
 In `ai-verify.js`, delete:
 - `var CONTEXT_LINES = 3;` (line ~5)
@@ -25,7 +25,7 @@ In `ai-verify.js`, delete:
 - the whole `function contextHtml(lines) { ... }`
 - the whole `function typeLabel(type) { ... }`
 
-- [ ] **Step 2: Add alignRows + gutter helpers**
+- [x] **Step 2: Add alignRows + gutter helpers**
 
 Insert after `escapeHtml`:
 
@@ -77,7 +77,7 @@ Insert after `escapeHtml`:
   }
 ```
 
-- [ ] **Step 3: Replace renderDiff**
+- [x] **Step 3: Replace renderDiff**
 
 Delete the whole old `renderDiff(originalText, hunks)` and `contextHtml` references; insert:
 
@@ -142,7 +142,7 @@ Delete the whole old `renderDiff(originalText, hunks)` and `contextHtml` referen
   }
 ```
 
-- [ ] **Step 4: Update onCheckChanged and setAllChecked**
+- [x] **Step 4: Update onCheckChanged and setAllChecked**
 
 Replace the body of `onCheckChanged`:
 
@@ -176,12 +176,12 @@ Replace the row-toggling part of `setAllChecked` (keep checkbox loop, replace `[
   }
 ```
 
-- [ ] **Step 5: Verify no stale references remain**
+- [x] **Step 5: Verify no stale references remain**
 
 Run: `grep -n "cellLines\|contextHtml\|typeLabel\|CONTEXT_LINES\|hunk-head\|ai-verify-skipped\|ai-verify-colhead\|data-hunk-row" src/main/resources/fitnesse/resources/ai-verify/ai-verify.js`
 Expected: no output.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/main/resources/fitnesse/resources/ai-verify/ai-verify.js
@@ -193,7 +193,7 @@ git commit -m "feat: full side-by-side line table diff renderer"
 **Files:**
 - Modify: `src/main/resources/fitnesse/resources/ai-verify/ai-verify.css`
 
-- [ ] **Step 1: Replace the diff block styles**
+- [x] **Step 1: Replace the diff block styles**
 
 In `ai-verify.css`, find the block starting at `.ai-verify-diff` (which currently sets `display: grid; grid-template-columns: 1fr 1fr;`) through `.ai-verify-comment { ... }` (all old diff styles: `.ai-verify-colhead`, `.ai-verify-cell`, `.ai-verify-line*`, `.ai-verify-skipped`, `.ai-verify-hunk-head`, `.ai-verify-hunk-unchecked`, `.ai-verify-comment`) and replace the whole span with:
 
@@ -275,12 +275,12 @@ In `ai-verify.css`, find the block starting at `.ai-verify-diff` (which currentl
 
 Keep everything else in the file untouched (modal, footer, message, error, button styles).
 
-- [ ] **Step 2: Verify no stale selectors remain**
+- [x] **Step 2: Verify no stale selectors remain**
 
 Run: `grep -n "ai-verify-colhead\|ai-verify-cell\|ai-verify-line\|ai-verify-skipped\|ai-verify-hunk-head\|ai-verify-hunk-unchecked\|ai-verify-comment" src/main/resources/fitnesse/resources/ai-verify/ai-verify.css`
 Expected: no output.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/main/resources/fitnesse/resources/ai-verify/ai-verify.css
@@ -292,12 +292,12 @@ git commit -m "feat: side-by-side table diff styling with red/green rows"
 **Files:**
 - none modified; build + `/tmp/fitnesse-smoke`
 
-- [ ] **Step 1: Full build**
+- [x] **Step 1: Full build**
 
 Run: `mvn clean verify 2>&1 | grep -E "Tests run: [0-9]+, Fail|BUILD" | tail -2`
 Expected: `Tests run: 39, Failures: 0, Errors: 0, Skipped: 0` and `BUILD SUCCESS`.
 
-- [ ] **Step 2: Deploy and restart smoke FitNesse**
+- [x] **Step 2: Deploy and restart smoke FitNesse**
 
 ```bash
 cp target/fitnesse-ai-verify-1.0.0-SNAPSHOT.jar /tmp/fitnesse-smoke/plugins/
@@ -308,7 +308,7 @@ curl -s -o /dev/null -w "FitNesse HTTP %{http_code}\n" http://localhost:8091/Fro
 ```
 Expected: `FitNesse HTTP 200`.
 
-- [ ] **Step 3: Verify new assets served**
+- [x] **Step 3: Verify new assets served**
 
 ```bash
 curl -s http://localhost:8091/files/fitnesse/ai-verify/ai-verify.js | grep -c "ai-verify-table"
@@ -316,11 +316,11 @@ curl -s http://localhost:8091/files/fitnesse/ai-verify/ai-verify.css | grep -c "
 ```
 Expected: both `>0`.
 
-- [ ] **Step 4: Manual browser check (user)**
+- [x] **Step 4: Manual browser check (user)**
 
 Open a wiki page → `?edit` → **Verify with AI** against the test page with intentional mistakes. Verify: full texts side by side with line numbers, all unchanged lines visible, red left / green right on modifications, checkbox per modified block with rowspan, hover tooltip shows the explanation, single horizontal scrollbar moves both sides, unchecking grays + strikes through, Apply (n) merges selected hunks.
 
-- [ ] **Step 5: Commit nothing further (no source changes expected; fixes get their own commits).**
+- [x] **Step 5: Commit nothing further (no source changes expected; fixes get their own commits).**
 
 ## Self-Review
 
