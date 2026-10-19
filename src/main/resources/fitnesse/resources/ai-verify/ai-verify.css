@@ -411,17 +411,17 @@
   margin: 3px 0 6px 0;
 }
 
-.ai-prompt-input,
-.ai-prompt-content {
+.ai-prompt-modal .ai-prompt-input,
+.ai-prompt-modal .ai-prompt-content {
   height: auto;
 }
 
 .ai-prompt-log {
-  flex: 7 1 0%;
+  flex: 0 0 70%;
   min-height: 0;
 }
 
 .ai-prompt-input-row {
-  flex: 3 1 0%;
+  flex: 0 0 30%;
   min-height: 0;
 }
