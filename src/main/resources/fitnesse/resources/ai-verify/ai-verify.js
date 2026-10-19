@@ -2,8 +2,6 @@
 (function () {
   'use strict';
 
-  var CONTEXT_LINES = 3;
-
   var state = {
     editor: null,
     contextRoot: '/',
@@ -134,16 +132,6 @@
     if (label) {
       label.textContent = busy ? 'Verifying…' : 'Verify with AI';
     }
-  }
-
-  function typeLabel(type) {
-    if (type === 'added') {
-      return 'added';
-    }
-    if (type === 'removed') {
-      return 'removed';
-    }
-    return 'modified';
   }
 
   function ensureModal() {
@@ -308,84 +296,109 @@
     }
   }
 
-  function cellLines(lines, side, type) {
-    if (lines.length === 0) {
-      return '<div class="ai-verify-line ai-verify-line-empty">(no lines)</div>';
-    }
-    var html = '';
-    for (var i = 0; i < lines.length; i++) {
-      var cls = 'ai-verify-line';
-      if (side === 'original' && type !== 'added') {
-        cls += ' ai-verify-line-removed';
-      }
-      if (side === 'corrected' && type !== 'removed') {
-        cls += ' ai-verify-line-added';
-      }
-      html += '<div class="' + cls + '">' + escapeHtml(lines[i]) + '</div>';
-    }
-    return html;
-  }
-
   function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
+  function gutter(no) {
+    return '<td class="ai-verify-gutter">' + (no === null ? '' : no) + '</td>';
+  }
+
+  function alignRows(originalText, hunks) {
+    var origLines = originalText.split('\n');
+    var rows = [];
+    var cursor = 0;
+    var i, k, hunk, start, oLines, cLines, max;
+    for (i = 0; i < hunks.length; i++) {
+      hunk = hunks[i];
+      start = hunk.startLine - 1;
+      while (cursor < start && cursor < origLines.length) {
+        rows.push({ origNo: cursor + 1, origText: origLines[cursor], corrNo: cursor + 1, corrText: origLines[cursor], hunkId: null });
+        cursor++;
+      }
+      oLines = hunk.originalLines;
+      cLines = hunk.correctedLines;
+      max = Math.max(oLines.length, cLines.length);
+      for (k = 0; k < max; k++) {
+        rows.push({
+          origNo: k < oLines.length ? start + k + 1 : null,
+          origText: k < oLines.length ? oLines[k] : null,
+          corrNo: null,
+          corrText: k < cLines.length ? cLines[k] : null,
+          hunkId: hunk.id,
+          type: hunk.type,
+          comment: hunk.comment
+        });
+      }
+      cursor = start + oLines.length;
+    }
+    while (cursor < origLines.length) {
+      rows.push({ origNo: cursor + 1, origText: origLines[cursor], corrNo: cursor + 1, corrText: origLines[cursor], hunkId: null });
+      cursor++;
+    }
+    var corrNo = 0;
+    for (i = 0; i < rows.length; i++) {
+      if (rows[i].corrText !== null) {
+        corrNo++;
+        rows[i].corrNo = corrNo;
+      }
+    }
+    return rows;
+  }
+
   function renderDiff(originalText, hunks) {
-    var lines = originalText.split('\n');
+    var rows = alignRows(originalText, hunks);
     var diff = state.modal.querySelector('.ai-verify-diff');
     diff.hidden = false;
-    var html = ['<div class="ai-verify-colhead"><span>Original</span><span>Proposition</span></div>'];
-    var cursor = 0;
 
-    for (var i = 0; i < hunks.length; i++) {
-      var hunk = hunks[i];
-      var start = hunk.startLine - 1;
-      var gap = start - cursor;
-      var ctxCount = Math.min(CONTEXT_LINES, Math.max(0, gap));
-      if (gap - ctxCount > 0) {
-        html.push('<div class="ai-verify-skipped">… ' + (gap - ctxCount) + ' unchanged line(s) hidden …</div>');
+    var html = ['<table class="ai-verify-table">',
+      '<thead><tr><th class="ai-verify-gutter-sel"></th><th class="ai-verify-gutter">#</th>'
+      + '<th class="ai-verify-text">Original</th><th class="ai-verify-gutter">#</th>'
+      + '<th class="ai-verify-text">Corrected</th></tr></thead>',
+      '<tbody>'];
+    var i = 0;
+    while (i < rows.length) {
+      var row = rows[i];
+      if (row.hunkId === null) {
+        html.push('<tr class="ai-verify-row-unchanged">'
+          + '<td class="ai-verify-gutter-sel"></td>'
+          + gutter(row.origNo)
+          + '<td class="ai-verify-text">' + escapeHtml(row.origText) + '</td>'
+          + gutter(row.corrNo)
+          + '<td class="ai-verify-text">' + escapeHtml(row.corrText) + '</td>'
+          + '</tr>');
+        i++;
+      } else {
+        var hunkId = row.hunkId;
+        var start = i;
+        while (i < rows.length && rows[i].hunkId === hunkId) {
+          i++;
+        }
+        var count = i - start;
+        for (var k = start; k < i; k++) {
+          var r = rows[k];
+          var selCell = (k === start)
+            ? '<td class="ai-verify-gutter-sel" rowspan="' + count + '">'
+              + '<input type="checkbox" class="ai-verify-hunk-check" data-hunk-id="' + hunkId + '" checked /></td>'
+            : '';
+          var leftClass = r.type === 'added' ? '' : ' ai-verify-side-removed';
+          var rightClass = r.type === 'removed' ? '' : ' ai-verify-side-added';
+          var title = r.comment ? ' title="' + escapeHtml(r.comment).replace(/"/g, '&quot;') + '"' : '';
+          html.push('<tr class="ai-verify-row-modified" data-hunk-id="' + hunkId + '">'
+            + selCell
+            + gutter(r.origNo)
+            + '<td class="ai-verify-text' + leftClass + '"' + (r.origText !== null ? title : '') + '>'
+            + (r.origText !== null ? escapeHtml(r.origText) : '') + '</td>'
+            + gutter(r.corrNo)
+            + '<td class="ai-verify-text' + rightClass + '"' + (r.corrText !== null ? title : '') + '>'
+            + (r.corrText !== null ? escapeHtml(r.corrText) : '') + '</td>'
+            + '</tr>');
+        }
       }
-      if (ctxCount > 0) {
-        var before = lines.slice(start - ctxCount, start);
-        html.push('<div class="ai-verify-ctx-row">'
-          + '<div class="ai-verify-cell">' + contextHtml(before) + '</div>'
-          + '<div class="ai-verify-cell">' + contextHtml(before) + '</div>'
-          + '</div>');
-      }
-
-      var checkedAttr = ' checked';
-      html.push('<div class="ai-verify-hunk-row" data-hunk-row="' + hunk.id + '">');
-      html.push('<div class="ai-verify-cell ai-verify-cell-original">'
-        + '<div class="ai-verify-hunk-head">Hunk ' + (hunk.id + 1) + ' — ' + typeLabel(hunk.type) + '</div>'
-        + cellLines(hunk.originalLines, 'original', hunk.type)
-        + '</div>');
-      html.push('<div class="ai-verify-cell ai-verify-cell-corrected">'
-        + '<label class="ai-verify-hunk-head">'
-        + '<input type="checkbox" class="ai-verify-hunk-check" data-hunk-id="' + hunk.id + '"' + checkedAttr + ' />'
-        + ' Hunk ' + (hunk.id + 1) + ' — ' + typeLabel(hunk.type) + '</label>'
-        + cellLines(hunk.correctedLines, 'corrected', hunk.type)
-        + (hunk.comment ? '<div class="ai-verify-comment">' + escapeHtml(hunk.comment) + '</div>' : '')
-        + '</div>');
-      html.push('</div>');
-
-      cursor = start + hunk.originalLines.length;
     }
-
-    var trailingCount = Math.min(CONTEXT_LINES, lines.length - cursor);
-    var trailingHidden = (lines.length - cursor) - trailingCount;
-    if (trailingHidden > 0) {
-      html.push('<div class="ai-verify-skipped">… ' + trailingHidden + ' unchanged line(s) hidden …</div>');
-    }
-    if (trailingCount > 0) {
-      var trailing = lines.slice(cursor, cursor + trailingCount);
-      html.push('<div class="ai-verify-ctx-row">'
-        + '<div class="ai-verify-cell">' + contextHtml(trailing) + '</div>'
-        + '<div class="ai-verify-cell">' + contextHtml(trailing) + '</div>'
-        + '</div>');
-    }
-
+    html.push('</tbody></table>');
     diff.innerHTML = html.join('');
 
     var checks = diff.querySelectorAll('.ai-verify-hunk-check');
@@ -394,20 +407,12 @@
     }
   }
 
-  function contextHtml(lines) {
-    var html = '';
-    for (var i = 0; i < lines.length; i++) {
-      html += '<div class="ai-verify-line ai-verify-line-context">' + escapeHtml(lines[i]) + '</div>';
-    }
-    return html;
-  }
-
   function onCheckChanged(e) {
     var id = parseInt(e.target.getAttribute('data-hunk-id'), 10);
     state.checked[id] = e.target.checked;
-    var row = state.modal.querySelector('[data-hunk-row="' + id + '"]');
-    if (row) {
-      row.classList.toggle('ai-verify-hunk-unchecked', !e.target.checked);
+    var rows = state.modal.querySelectorAll('tr[data-hunk-id="' + id + '"]');
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].classList.toggle('ai-verify-row-unchecked', !e.target.checked);
     }
     updateApplyButton();
   }
@@ -418,9 +423,9 @@
       checks[i].checked = checked;
       var id = parseInt(checks[i].getAttribute('data-hunk-id'), 10);
       state.checked[id] = checked;
-      var row = state.modal.querySelector('[data-hunk-row="' + id + '"]');
-      if (row) {
-        row.classList.toggle('ai-verify-hunk-unchecked', !checked);
+      var rows = state.modal.querySelectorAll('tr[data-hunk-id="' + id + '"]');
+      for (var r = 0; r < rows.length; r++) {
+        rows[r].classList.toggle('ai-verify-row-unchecked', !checked);
       }
     }
     updateApplyButton();
