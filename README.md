@@ -68,8 +68,6 @@ Properties:
 | `llm.generate.prompt`        | no       | bundled  | Inline text replacing the generation system prompt (Ai Prompt)                 |
 | `llm.generate.prompt.file`   | no       | —        | Path to a UTF-8 file holding the generation system prompt; re-read on every send, takes precedence over `llm.generate.prompt` |
 
-> **Backward compatibility:** The old property names `llm.prompt`, `llm.prompt.file`, `llm.http.max.connections`, `llm.http.connection.ttl.seconds` are still supported as aliases.
-
 4. Restart FitNesse (once: the `llm.*` properties are read at startup). After that,
    editing the `llm.prompt.file` file takes effect on the next **Verify with AI**
    click — no restart or recompile needed.
