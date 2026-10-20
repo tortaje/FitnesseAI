@@ -97,6 +97,9 @@ ServiceLoader (META-INF/services inside the JAR).
    manual (Save button).
 5. If the textarea changed between verification and Apply, applying is refused
    (re-run the verification).
+
+![Verify with AI modal](docs/images/fitnessAI-verify.png)
+
 6. **Ai Prompt to FitNesse** (text-area toolbar, between *FitNesse to Spreadsheet*
    and *Format*)
    opens a two-panel modal: describe the page you want on the left, press
@@ -104,6 +107,10 @@ ServiceLoader (META-INF/services inside the JAR).
    editable; every further **Send** re-sends it, so the LLM refines your hand
    edits. **Save** closes the modal and replaces the whole editor content — the
    page is still saved manually with the Save button.
+
+![Ai Prompt modal](docs/images/FitnessAI-prompt.png)
+
+![Edit view with Ai Prompt button](docs/images/fitnessAI-edit.png)
 
 ## Limitations
 
