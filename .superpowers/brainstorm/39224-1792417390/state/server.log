@@ -1,0 +1,6 @@
+{"type":"server-started","port":56518,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:56518","screen_dir":"/Users/stef/Dev/Sources/AI/FitnesseAI/.superpowers/brainstorm/39224-1792417390/content","state_dir":"/Users/stef/Dev/Sources/AI/FitnesseAI/.superpowers/brainstorm/39224-1792417390/state"}
+{"type":"screen-added","file":"/Users/stef/Dev/Sources/AI/FitnesseAI/.superpowers/brainstorm/39224-1792417390/content/connected.html"}
+{"type":"screen-added","file":"/Users/stef/Dev/Sources/AI/FitnesseAI/.superpowers/brainstorm/39224-1792417390/content/modal-layout.html"}
+{"source":"user-event","type":"click","text":"Ai Prompt to FitNesse×\n        \n        \n          \n            chat log (scrolls)\n            make a test for login\n            Sure, here is...\n            \n              Prompt…\n              Send\n            \n          \n          \n            generated wiki (editable)\n            !1 Login test|user|pass||----|----||bob|ok|\n          \n        \n        \n          Cancel\n          Save\n        \n      \n    \n    \n      A · 50 / 50\n      Both panels equal width.","choice":"even","id":null,"timestamp":1792418040750}
+{"type":"screen-added","file":"/Users/stef/Dev/Sources/AI/FitnesseAI/.superpowers/brainstorm/39224-1792417390/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -29,40 +29,57 @@ textarea (manual save as usual afterwards).
 
 3. Configure `plugins.properties` at the **root** of FitNesse (next to `FitNesseRoot`, *not* inside `plugins/`):
 
-   ```properties
-   llm.base.url=http://localhost:11434/v1
-   llm.api.key=
-   llm.model=llama3.1
-   # Markdown system prompt, re-read on every Verify click (no restart needed)
-   llm.prompt.file=/path/to/ai-verify-prompt.md
-   # Verbose plugin logs (full LLM request/response dumps)
-   llm.debug=true
-   ```
+```properties
+# Core LLM (shared)
+llm.base.url=http://localhost:11434/v1
+llm.api.key=
+llm.model=llama3.1
+llm.max.tokens=4096
+llm.timeout.seconds=120
+llm.debug=false
 
-   Properties:
+# HTTP client pool
+llm.http.max-connections=20
+llm.http.connection-ttl.seconds=300
 
-   | Property             | Required | Default  | Description                                                                    |
-   |----------------------|----------|----------|--------------------------------------------------------------------------------|
-   | `llm.base.url`       | yes      | —        | Base URL of the OpenAI-compatible API (`.../v1`)                                |
-   | `llm.model`          | yes      | —        | Model name                                                                     |
-   | `llm.api.key`        | no       | empty    | Bearer token (empty for local endpoints)                                       |
-   | `llm.max.tokens`     | no       | 4096     | Request `max_tokens`                                                           |
-   | `llm.timeout.seconds`| no       | 120      | HTTP timeout                                                                   |
-   | `llm.prompt`         | no       | bundled  | Inline text replacing the default system prompt                                |
-   | `llm.prompt.file`    | no       | —        | Path to a UTF-8 file (`.md` recommended) holding the system prompt; re-read on every verification, takes precedence over `llm.prompt` |
-   | `llm.generate.prompt`     | no       | bundled  | Inline text replacing the generation system prompt (Ai Prompt to FitNesse) |
-   | `llm.generate.prompt.file`| no       | —        | Path to a UTF-8 file holding the generation system prompt; re-read on every send, takes precedence over `llm.generate.prompt` |
-   | `llm.debug`          | no       | `false`  | When `true`, logs the full LLM request/response payloads, the prompt source, the verify summary and diff internals at INFO level; when `false` these go to FINE (hidden by default). LLM errors are always logged as warnings |
+# Verify (proofreading) — explicit verify.* prefix
+llm.verify.prompt=
+llm.verify.prompt.file=/path/to/ai-verify-prompt.md
+
+# Generate (Ai Prompt) — explicit generate.* prefix
+llm.generate.prompt=
+llm.generate.prompt.file=/path/to/ai-generate-prompt.md
+```
+
+Properties:
+
+| Property                     | Required | Default  | Description                                                                    |
+|------------------------------|----------|----------|--------------------------------------------------------------------------------|
+| `llm.base.url`               | yes      | —        | Base URL of the OpenAI-compatible API (`.../v1`)                                |
+| `llm.model`                  | yes      | —        | Model name                                                                     |
+| `llm.api.key`                | no       | empty    | Bearer token (empty for local endpoints)                                       |
+| `llm.max.tokens`             | no       | 4096     | Request `max_tokens`                                                           |
+| `llm.timeout.seconds`        | no       | 120      | HTTP timeout                                                                   |
+| `llm.debug`                  | no       | `false`  | When `true`, logs the full LLM request/response payloads, the prompt source, the verify summary and diff internals at INFO level; when `false` these go to FINE (hidden by default). LLM errors are always logged as warnings |
+| `llm.http.max-connections`   | no       | 20       | Max connections in the HTTP client pool                                        |
+| `llm.http.connection-ttl.seconds` | no  | 300      | Connection time-to-live in seconds                                             |
+| `llm.verify.prompt`          | no       | bundled  | Inline text replacing the default Verify system prompt                         |
+| `llm.verify.prompt.file`     | no       | —        | Path to a UTF-8 file (`.md`) holding the Verify system prompt; re-read on every verification, takes precedence over `llm.verify.prompt` |
+| `llm.generate.prompt`        | no       | bundled  | Inline text replacing the generation system prompt (Ai Prompt)                 |
+| `llm.generate.prompt.file`   | no       | —        | Path to a UTF-8 file holding the generation system prompt; re-read on every send, takes precedence over `llm.generate.prompt` |
+
+> **Backward compatibility:** The old property names `llm.prompt`, `llm.prompt.file`, `llm.http.max.connections`, `llm.http.connection.ttl.seconds` are still supported as aliases.
 
 4. Restart FitNesse (once: the `llm.*` properties are read at startup). After that,
    editing the `llm.prompt.file` file takes effect on the next **Verify with AI**
    click — no restart or recompile needed.
 
-To start from the embedded prompt:
+To start from the embedded prompts:
 
-    ```bash
-    unzip -p plugins/fitnesse-ai-1.0.0-SNAPSHOT.jar ai-verify-prompt.txt > ai-verify-prompt.md
-    ```
+```bash
+unzip -p plugins/fitnesse-ai-1.0.0-SNAPSHOT.jar ai-verify-prompt.txt > ai-verify-prompt.md
+unzip -p plugins/fitnesse-ai-1.0.0-SNAPSHOT.jar ai-generate-prompt.txt > ai-generate-prompt.md
+```
 
 No registration property is required: the plugin self-discovers through
 ServiceLoader (META-INF/services inside the JAR).

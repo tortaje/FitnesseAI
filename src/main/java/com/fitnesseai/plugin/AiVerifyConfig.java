@@ -21,13 +21,25 @@ public final class AiVerifyConfig {
   public static final String MODEL = "llm.model";
   public static final String MAX_TOKENS = "llm.max.tokens";
   public static final String TIMEOUT_SECONDS = "llm.timeout.seconds";
+  public static final String DEBUG = "llm.debug";
+
+  // Verify (proofreading) prompts
+  public static final String VERIFY_PROMPT = "llm.verify.prompt";
+  public static final String VERIFY_PROMPT_FILE = "llm.verify.prompt.file";
+  // Aliases (backward compat)
   public static final String PROMPT = "llm.prompt";
   public static final String PROMPT_FILE = "llm.prompt.file";
+
+  // Generate (Ai Prompt) prompts
   public static final String GENERATE_PROMPT = "llm.generate.prompt";
   public static final String GENERATE_PROMPT_FILE = "llm.generate.prompt.file";
-  public static final String DEBUG = "llm.debug";
-  public static final String HTTP_MAX_CONNECTIONS = "llm.http.max.connections";
-  public static final String HTTP_CONNECTION_TTL_SECONDS = "llm.http.connection.ttl.seconds";
+
+  // HTTP client pool
+  public static final String HTTP_MAX_CONNECTIONS = "llm.http.max-connections";
+  public static final String HTTP_CONNECTION_TTL_SECONDS = "llm.http.connection-ttl.seconds";
+  // Aliases (backward compat)
+  public static final String HTTP_MAX_CONNECTIONS_ALIAS = "llm.http.max.connections";
+  public static final String HTTP_CONNECTION_TTL_SECONDS_ALIAS = "llm.http.connection.ttl.seconds";
 
   public static final int DEFAULT_MAX_TOKENS = 4096;
   public static final int DEFAULT_TIMEOUT_SECONDS = 120;
@@ -80,11 +92,11 @@ public final class AiVerifyConfig {
   }
 
   public int httpMaxConnections() {
-    return intOr(HTTP_MAX_CONNECTIONS, DEFAULT_HTTP_MAX_CONNECTIONS);
+    return intOr(HTTP_MAX_CONNECTIONS, DEFAULT_HTTP_MAX_CONNECTIONS, HTTP_MAX_CONNECTIONS_ALIAS);
   }
 
   public int httpConnectionTtlSeconds() {
-    return intOr(HTTP_CONNECTION_TTL_SECONDS, DEFAULT_HTTP_CONNECTION_TTL_SECONDS);
+    return intOr(HTTP_CONNECTION_TTL_SECONDS, DEFAULT_HTTP_CONNECTION_TTL_SECONDS, HTTP_CONNECTION_TTL_SECONDS_ALIAS);
   }
 
   public boolean debug() {
@@ -92,22 +104,43 @@ public final class AiVerifyConfig {
   }
 
   public String systemPrompt() {
-    return resolvePrompt("[ai-verify]", PROMPT_FILE, PROMPT, DEFAULT_PROMPT_RESOURCE);
+    return resolvePrompt("[ai-verify]",
+      VERIFY_PROMPT_FILE, VERIFY_PROMPT, DEFAULT_PROMPT_RESOURCE,
+      new String[]{PROMPT_FILE},           // file aliases
+      new String[]{PROMPT}                 // inline aliases
+    );
   }
 
   public String generateSystemPrompt() {
-    return resolvePrompt("[ai-prompt]", GENERATE_PROMPT_FILE, GENERATE_PROMPT,
-      DEFAULT_GENERATE_PROMPT_RESOURCE);
+    return resolvePrompt("[ai-prompt]",
+      GENERATE_PROMPT_FILE, GENERATE_PROMPT, DEFAULT_GENERATE_PROMPT_RESOURCE,
+      new String[]{},                      // no file aliases for generate (only primary)
+      new String[]{}                       // no inline aliases for generate (only primary)
+    );
   }
 
-  private String resolvePrompt(String tag, String fileKey, String inlineKey, String resource) {
-    String path = raw(fileKey);
+  private String resolvePrompt(String tag,
+      String primaryFileKey, String primaryInlineKey, String resource,
+      String[] fileAliases, String[] inlineAliases) {
+    String path = raw(primaryFileKey);
+    if (isBlank(path)) {
+      for (String alias : fileAliases) {
+        path = raw(alias);
+        if (!isBlank(path)) break;
+      }
+    }
     if (!isBlank(path)) {
-      String prompt = promptFromFile(path, fileKey);
+      String prompt = promptFromFile(path, primaryFileKey, fileAliases);
       logPromptSource(tag, "file(" + path + ")", prompt);
       return prompt;
     }
-    String inline = raw(inlineKey);
+    String inline = raw(primaryInlineKey);
+    if (isBlank(inline)) {
+      for (String alias : inlineAliases) {
+        inline = raw(alias);
+        if (!isBlank(inline)) break;
+      }
+    }
     if (!isBlank(inline)) {
       logPromptSource(tag, "inline", inline);
       return inline;
@@ -133,11 +166,15 @@ public final class AiVerifyConfig {
     }
   }
 
-  private static String promptFromFile(String path, String fileKey) {
+  private static String promptFromFile(String path, String fileKey, String... aliasKeys) {
     try {
       return Files.readString(Path.of(path), StandardCharsets.UTF_8);
     } catch (NoSuchFileException e) {
-      throw new IllegalStateException(fileKey + " points to a missing file: " + path);
+      String allKeys = fileKey;
+      if (aliasKeys.length > 0) {
+        allKeys += " (aliases: " + String.join(", ", aliasKeys) + ")";
+      }
+      throw new IllegalStateException(allKeys + " points to a missing file: " + path);
     } catch (IOException e) {
       throw new IllegalStateException(fileKey + " could not read file " + path + ": " + e.getMessage());
     }
@@ -148,8 +185,14 @@ public final class AiVerifyConfig {
     return value == null ? null : value.trim();
   }
 
-  private int intOr(String key, int defaultValue) {
-    String value = raw(key);
+  private int intOr(String primaryKey, int defaultValue, String... aliasKeys) {
+    String value = raw(primaryKey);
+    if (value == null) {
+      for (String alias : aliasKeys) {
+        value = raw(alias);
+        if (value != null) break;
+      }
+    }
     if (value == null) {
       return defaultValue;
     }
