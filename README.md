@@ -1,5 +1,8 @@
 # FitNesse AI Plugin
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.tortaje/fitnesse-ai.svg)](https://central.sonatype.com/artifact/io.github.tortaje/fitnesse-ai)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 AI-assisted editing for the [FitNesse](https://fitnesse.org) wiki. The plugin adds two
 buttons to the page editor, backed by any **OpenAI-compatible LLM** (OpenAI, Ollama,
 LM Studio, vLLM, Azure/OpenRouter gateways...):
@@ -95,11 +98,13 @@ repairs that case before giving up.
 
 ## Build
 
+Only needed if you do not use a published release (see Installation).
+
 ```bash
 mvn package
 ```
 
-This runs the unit tests and produces `target/fitnesse-ai-1.0.0-SNAPSHOT.jar`. To run the
+This runs the unit tests and produces `target/fitnesse-ai-<version>.jar`. To run the
 tests only:
 
 ```bash
@@ -108,10 +113,26 @@ mvn test
 
 ## Installation
 
-1. Copy the JAR into the `plugins/` directory of your FitNesse standalone instance:
+1. Get the JAR, from one of these sources:
+
+   - **Maven Central**:
+
+     ```bash
+     curl -L -o fitnesse-ai-1.0.0.jar \
+       https://repo1.maven.org/maven2/io/github/tortaje/fitnesse-ai/1.0.0/fitnesse-ai-1.0.0.jar
+     ```
+
+   - **GitHub Releases**: download `fitnesse-ai-1.0.0.jar` from the
+     [releases page](https://github.com/tortaje/FitnesseAI/releases).
+   - **Your own build**: `target/fitnesse-ai-<version>.jar` (see Build).
+
+   The plugin is a drop-in JAR, not a library dependency: its dependencies (FitNesse,
+   org.json, diffutils) are provided by FitNesse itself.
+
+   Copy the JAR into the `plugins/` directory of your FitNesse standalone instance:
 
    ```bash
-   cp target/fitnesse-ai-1.0.0-SNAPSHOT.jar <fitnesse-folder>/plugins/
+   cp fitnesse-ai-1.0.0.jar <fitnesse-folder>/plugins/
    ```
 
 2. Configure the LLM in `plugins.properties` at the **root** of FitNesse (next to
@@ -160,8 +181,8 @@ missing properties.
 To start from the bundled prompts, extract them from the JAR:
 
 ```bash
-unzip -p plugins/fitnesse-ai-1.0.0-SNAPSHOT.jar ai-verify-prompt.txt > ai-verify-prompt.md
-unzip -p plugins/fitnesse-ai-1.0.0-SNAPSHOT.jar ai-generate-prompt.txt > ai-generate-prompt.md
+unzip -p plugins/fitnesse-ai-1.0.0.jar ai-verify-prompt.txt > ai-verify-prompt.md
+unzip -p plugins/fitnesse-ai-1.0.0.jar ai-generate-prompt.txt > ai-generate-prompt.md
 ```
 
 Edit them, then point the plugin at the files:
